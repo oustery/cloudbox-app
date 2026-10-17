@@ -2,18 +2,25 @@ name: Build & Publish Release
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag name for the release (e.g. v1.0.0)'
+        description: 'Tag name for the release (e.g. v1.0.0 or latest)'
         required: false
         default: 'v1.0.0'
       release_title:
         description: 'Release Title'
         required: false
-        default: 'CloudBox v1.0.0'
+        default: 'CloudBox Release'
       is_draft:
         description: 'Create as draft'
         type: boolean
@@ -54,6 +61,10 @@ jobs:
             gradle wrapper
           fi
           chmod +x ./gradlew
+
+      - name: Run Tests
+        run: |
+          ./gradlew :app:testDebugUnitTest --no-daemon
 
       - name: Configure Keystore for Release Signing
         run: |
@@ -114,27 +125,42 @@ jobs:
         with:
           name: CloudBox-Release-APKs
           path: release-artifacts/*
+          retention-days: 14
 
       - name: Determine Release Tag and Title
         id: release_info
+        if: github.event_name != 'pull_request'
         run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG="${{ github.event.inputs.tag_name }}"
             TITLE="${{ github.event.inputs.release_title }}"
             DRAFT="${{ github.event.inputs.is_draft }}"
             PRERELEASE="${{ github.event.inputs.is_prerelease }}"
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG="${{ github.ref_name }}"
             TITLE="CloudBox $TAG"
             DRAFT=false
             PRERELEASE=false
+          else
+            # Automatic build from push to main/master: rolling 'latest' release
+            TAG="latest"
+            TITLE="CloudBox Latest Build ($SHORT_SHA)"
+            DRAFT=false
+            PRERELEASE=true
           fi
+
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "title=$TITLE" >> $GITHUB_OUTPUT
           echo "draft=$DRAFT" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
 
-      - name: Publish GitHub Release
+      - name: Publish / Update GitHub Release
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_info.outputs.tag }}
@@ -144,7 +170,10 @@ jobs:
           files: release-artifacts/*
           generate_release_notes: true
           body: |
-            ## 📦 CloudBox Android Release
+            ## 📦 CloudBox Android Release (${{ steps.release_info.outputs.tag }})
+
+            - **Коммит**: `${{ steps.release_info.outputs.short_sha }}`
+            - **Дата сборки**: `${{ steps.release_info.outputs.build_date }}`
 
             ### Файлы для установки:
             - **`CloudBox-arm64-v8a-release.apk`**: Для большинства современных 64-битных смартфонов и планшетов (рекомендуется).
@@ -153,6 +182,6 @@ jobs:
             - **`checksums-sha256.txt`**: Контрольные суммы SHA-256 для проверки целостности файлов.
 
             ---
-            *Собрано автоматически с помощью GitHub Actions.*
+            *Сборка и публикация выполнены автоматически через GitHub Actions при обновлении репозитория.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
