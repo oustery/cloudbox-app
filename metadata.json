@@ -1,0 +1,6 @@
+{
+  "name": "CloudBox",
+  "description": "Просмотрщик и загрузчик файлов с публичных ссылок Облака Mail.ru",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

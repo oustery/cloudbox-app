@@ -1,0 +1,158 @@
+name: Build & Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for the release (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+      release_title:
+        description: 'Release Title'
+        required: false
+        default: 'CloudBox v1.0.0'
+      is_draft:
+        description: 'Create as draft'
+        type: boolean
+        default: false
+      is_prerelease:
+        description: 'Create as pre-release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build Multi-Arch Release APKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure Gradlew is Executable
+        run: |
+          if [ ! -f ./gradlew ]; then
+            echo "Generating Gradle wrapper..."
+            gradle wrapper
+          fi
+          chmod +x ./gradlew
+
+      - name: Configure Keystore for Release Signing
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Using custom release keystore from secrets..."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-upload-key.jks
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/my-upload-key.jks" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=${{ secrets.STORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          else
+            echo "No custom keystore provided. Generating a self-signed release keystore for CI..."
+            keytool -genkeypair -v -keystore my-upload-key.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android -dname "CN=CloudBox, OU=Release, O=AIStudio, L=City, S=State, C=US"
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/my-upload-key.jks" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=upload" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+          fi
+
+      - name: Build Release APKs (Split by Architecture)
+        run: |
+          ./gradlew :app:assembleRelease -PsplitApks --no-daemon --stacktrace
+
+      - name: Organize and Rename Release APKs
+        id: organize_apks
+        run: |
+          mkdir -p release-artifacts
+          
+          # Find generated APKs
+          APK_DIR="app/build/outputs/apk/release"
+          echo "Listing generated APKs in $APK_DIR:"
+          ls -la "$APK_DIR"
+          
+          # Copy and rename architecture-specific APKs
+          if [ -f "$APK_DIR/app-arm64-v8a-release.apk" ]; then
+            cp "$APK_DIR/app-arm64-v8a-release.apk" "release-artifacts/CloudBox-arm64-v8a-release.apk"
+          fi
+
+          if [ -f "$APK_DIR/app-armeabi-v7a-release.apk" ]; then
+            cp "$APK_DIR/app-armeabi-v7a-release.apk" "release-artifacts/CloudBox-armeabi-v7a-release.apk"
+          fi
+
+          if [ -f "$APK_DIR/app-universal-release.apk" ]; then
+            cp "$APK_DIR/app-universal-release.apk" "release-artifacts/CloudBox-universal-release.apk"
+          elif [ -f "$APK_DIR/app-release.apk" ]; then
+            cp "$APK_DIR/app-release.apk" "release-artifacts/CloudBox-universal-release.apk"
+          fi
+
+          # Compute SHA-256 Checksums
+          cd release-artifacts
+          sha256sum *.apk > checksums-sha256.txt
+          cat checksums-sha256.txt
+          cd ..
+
+      - name: Upload Artifacts to Workflow Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudBox-Release-APKs
+          path: release-artifacts/*
+
+      - name: Determine Release Tag and Title
+        id: release_info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag_name }}"
+            TITLE="${{ github.event.inputs.release_title }}"
+            DRAFT="${{ github.event.inputs.is_draft }}"
+            PRERELEASE="${{ github.event.inputs.is_prerelease }}"
+          else
+            TAG="${{ github.ref_name }}"
+            TITLE="CloudBox $TAG"
+            DRAFT=false
+            PRERELEASE=false
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "draft=$DRAFT" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: ${{ steps.release_info.outputs.title }}
+          draft: ${{ steps.release_info.outputs.draft == 'true' }}
+          prerelease: ${{ steps.release_info.outputs.prerelease == 'true' }}
+          files: release-artifacts/*
+          generate_release_notes: true
+          body: |
+            ## 📦 CloudBox Android Release
+
+            ### Файлы для установки:
+            - **`CloudBox-arm64-v8a-release.apk`**: Для большинства современных 64-битных смартфонов и планшетов (рекомендуется).
+            - **`CloudBox-armeabi-v7a-release.apk`**: Для устаревших 32-битных устройств.
+            - **`CloudBox-universal-release.apk`**: Универсальный APK с поддержкой всех архитектур.
+            - **`checksums-sha256.txt`**: Контрольные суммы SHA-256 для проверки целостности файлов.
+
+            ---
+            *Собрано автоматически с помощью GitHub Actions.*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
