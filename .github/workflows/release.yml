@@ -45,7 +45,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: 17
@@ -53,12 +53,14 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
       - name: Ensure Gradlew is Executable
         run: |
           if [ ! -f ./gradlew ]; then
-            echo "Generating Gradle wrapper..."
-            gradle wrapper
+            echo "Generating Gradle wrapper for 9.3.1..."
+            gradle wrapper --gradle-version 9.3.1
           fi
           chmod +x ./gradlew
 
