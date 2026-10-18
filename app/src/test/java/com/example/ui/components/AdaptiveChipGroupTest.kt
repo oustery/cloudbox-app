@@ -29,6 +29,8 @@ class AdaptiveChipGroupTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    private val homeCategories = listOf("Все", "Избранное", "Фото и видео", "Документы", "Архивы")
+
     @Test
     fun downloadFiltersStayInside320DpViewportAtLargeFontScale() {
         assertChipLayout(
@@ -39,10 +41,15 @@ class AdaptiveChipGroupTest {
     }
 
     @Test
-    fun homeCategoriesWrapAndStayInside320DpViewportAtLargeFontScale() {
+    fun homeCategoriesStayInside320DpViewportAtLargeFontScale() {
+        assertChipLayout(labels = homeCategories, width = 320.dp, fontScale = 2f)
+    }
+
+    @Test
+    fun chipSetWrapsWhenViewportRequiresIt() {
         assertChipLayout(
-            labels = listOf("Все", "Избранное", "Фото и видео", "Документы", "Архивы"),
-            width = 320.dp,
+            labels = homeCategories,
+            width = 220.dp,
             fontScale = 2f,
             expectWrap = true
         )
@@ -108,7 +115,7 @@ class AdaptiveChipGroupTest {
         }
         if (expectWrap) {
             assertTrue(
-                "The five Home category chips should wrap at a 320 dp viewport",
+                "The chip set should wrap when a single row cannot hold it",
                 chipBounds.last().top > chipBounds.first().top
             )
         }
