@@ -2,6 +2,9 @@ package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -23,6 +26,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -59,7 +64,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -70,6 +77,8 @@ import com.example.ui.components.FileItemCard
 import com.example.ui.components.ContentStatePanel
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.viewmodel.DownloadViewModel
+import com.example.ui.theme.UiMotionTokens
+import com.example.ui.theme.UiSpacing
 
 @Composable
 fun FolderExplorerScreen(
@@ -78,6 +87,7 @@ fun FolderExplorerScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
     val currentFolder by viewModel.currentFolder.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoadingFolder.collectAsStateWithLifecycle()
     val error by viewModel.folderError.collectAsStateWithLifecycle()
@@ -129,7 +139,7 @@ fun FolderExplorerScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                        .padding(horizontal = UiSpacing.small, vertical = UiSpacing.iconGap),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
@@ -199,7 +209,7 @@ fun FolderExplorerScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                            .padding(horizontal = UiSpacing.large, vertical = UiSpacing.extraSmall),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         breadcrumbs.forEachIndexed { index, crumb ->
@@ -227,7 +237,21 @@ fun FolderExplorerScreen(
         }
 
         // Selection Action Bar
-        AnimatedVisibility(visible = isSelectionMode) {
+        AnimatedVisibility(
+            visible = isSelectionMode,
+            enter = fadeIn(
+                animationSpec = tween(
+                    durationMillis = UiMotionTokens.shortDurationMillis,
+                    easing = UiMotionTokens.standardEasing
+                )
+            ),
+            exit = fadeOut(
+                animationSpec = tween(
+                    durationMillis = UiMotionTokens.shortDurationMillis,
+                    easing = UiMotionTokens.standardEasing
+                )
+            )
+        ) {
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.fillMaxWidth()
@@ -235,7 +259,7 @@ fun FolderExplorerScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = UiSpacing.large, vertical = UiSpacing.small),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -267,7 +291,7 @@ fun FolderExplorerScreen(
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(UiSpacing.iconGap))
                             Text("Скачать", fontWeight = FontWeight.Bold)
                         }
                     }
@@ -279,7 +303,7 @@ fun FolderExplorerScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = UiSpacing.large, vertical = UiSpacing.small)
         ) {
             OutlinedTextField(
                 value = searchQuery,
@@ -294,6 +318,8 @@ fun FolderExplorerScreen(
                     }
                 },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("explorer_search_field"),
@@ -304,13 +330,13 @@ fun FolderExplorerScreen(
                 )
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(UiSpacing.small))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
             ) {
                 filterChips.forEach { chip ->
                     val isSelected = fileFilter == chip
@@ -378,9 +404,9 @@ fun FolderExplorerScreen(
                 isGridView -> {
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 140.dp),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(UiSpacing.large),
+                        horizontalArrangement = Arrangement.spacedBy(UiSpacing.medium),
+                        verticalArrangement = Arrangement.spacedBy(UiSpacing.medium),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(filteredItems, key = { it.weblink }) { item ->
@@ -417,8 +443,8 @@ fun FolderExplorerScreen(
 
                 else -> {
                     LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(UiSpacing.large),
+                        verticalArrangement = Arrangement.spacedBy(UiSpacing.small),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(filteredItems, key = { it.weblink }) { item ->

@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.example.data.preferences.AppSettings
 import com.example.data.preferences.AppThemeMode
+import com.example.ui.theme.UiSpacing
 
 @Composable
 fun SettingsScreen(
@@ -48,10 +49,10 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(UiSpacing.extraLarge),
+        verticalArrangement = Arrangement.spacedBy(UiSpacing.large)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall)) {
             Text("Настройки", style = MaterialTheme.typography.headlineSmall)
             Text(
                 "Настройте внешний вид CloudBox под себя.",
@@ -69,10 +70,10 @@ fun SettingsScreen(
             )
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(UiSpacing.large),
+                verticalArrangement = Arrangement.spacedBy(UiSpacing.medium)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall)) {
                     Text("Тема приложения", style = MaterialTheme.typography.titleSmall)
                     Text(
                         "Системная тема автоматически следует настройке устройства.",
@@ -84,7 +85,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
                 ) {
                     AppThemeMode.entries.forEach { mode ->
                         FilterChip(
@@ -123,8 +124,8 @@ fun SettingsScreen(
             )
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.padding(UiSpacing.large),
+                verticalArrangement = Arrangement.spacedBy(UiSpacing.small)
             ) {
                 Text("Вид файлов по умолчанию", style = MaterialTheme.typography.titleSmall)
                 Text(
@@ -132,7 +133,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)) {
                     FilterChip(
                         selected = settings.gridByDefault,
                         onClick = { onGridByDefaultChanged(true) },
@@ -155,7 +156,7 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(UiSpacing.extraSmall))
         Text(
             "Настройки сохраняются на этом устройстве.",
             style = MaterialTheme.typography.bodySmall,
@@ -175,9 +176,9 @@ private fun PreferenceSwitchRow(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(UiSpacing.medium)
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(
                 description,

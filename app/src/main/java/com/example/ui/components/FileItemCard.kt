@@ -55,6 +55,7 @@ import coil.compose.AsyncImage
 import com.example.data.model.CloudItem
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.CyanAccent
+import com.example.ui.theme.UiSpacing
 
 @Composable
 fun FileItemCard(
@@ -168,7 +169,7 @@ private fun FileGridItem(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .padding(horizontal = UiSpacing.small, vertical = UiSpacing.iconGap)
             ) {
                 Text(
                     text = item.name,
@@ -198,7 +199,7 @@ private fun FileGridItem(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Видеофайл",
                         tint = Color.White,
-                        modifier = Modifier.padding(6.dp)
+                        modifier = Modifier.padding(UiSpacing.iconGap)
                     )
                 }
             }
@@ -209,7 +210,7 @@ private fun FileGridItem(
                     onClick = onClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(2.dp)
+                        .padding(UiSpacing.micro)
                 ) {
                     Icon(
                         imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
@@ -222,7 +223,7 @@ private fun FileGridItem(
                     onClick = onDownloadClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(4.dp)
+                        .padding(UiSpacing.extraSmall)
                         .background(Color(0x80000000), CircleShape)
                 ) {
                     Icon(
@@ -268,7 +269,7 @@ private fun FileListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
+                .padding(UiSpacing.medium),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Icon or thumbnail
@@ -296,7 +297,7 @@ private fun FileListItem(
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(UiSpacing.medium))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -306,7 +307,7 @@ private fun FileListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(UiSpacing.micro))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = item.formattedSize,

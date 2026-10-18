@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.SavedLinkEntity
 import com.example.ui.theme.CloudBlue
+import com.example.ui.theme.UiSpacing
 
 @Composable
 fun SavedLinkCard(
@@ -68,7 +69,7 @@ fun SavedLinkCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(UiSpacing.medium),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Thumbnail or Cloud Folder Icon
@@ -96,7 +97,7 @@ fun SavedLinkCard(
                 }
             }
 
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(UiSpacing.medium))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -106,7 +107,7 @@ fun SavedLinkCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(UiSpacing.micro))
                 Text(
                     text = link.weblinkKey,
                     style = MaterialTheme.typography.bodySmall,
@@ -114,7 +115,7 @@ fun SavedLinkCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(UiSpacing.extraSmall))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
@@ -122,7 +123,7 @@ fun SavedLinkCard(
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                 shape = RoundedCornerShape(4.dp)
                             )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(horizontal = UiSpacing.iconGap, vertical = UiSpacing.micro)
                     ) {
                         Text(
                             text = if (link.itemCount > 0) "${link.itemCount} файлов" else "Папка",

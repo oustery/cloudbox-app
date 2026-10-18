@@ -6,6 +6,8 @@ import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,8 +59,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,6 +73,7 @@ import com.example.ui.components.ContentStatePanel
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.CyanAccent
 import com.example.ui.viewmodel.CloudLinkViewModel
+import com.example.ui.theme.UiSpacing
 
 @Composable
 fun HomeScreen(
@@ -76,6 +82,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val savedLinks by viewModel.savedLinks.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -83,14 +90,30 @@ fun HomeScreen(
     var inputUrl by remember { mutableStateOf("") }
     var inputError by remember { mutableStateOf<String?>(null) }
 
+    fun submitLink() {
+        val candidate = inputUrl.trim()
+        if (candidate.isBlank()) {
+            inputError = "Введите или вставьте ссылку"
+            return
+        }
+        val weblink = CloudUrlParser.extractWeblink(candidate)
+        if (weblink == null) {
+            inputError = "Неверный формат ссылки Облака Mail.ru"
+            return
+        }
+        inputError = null
+        keyboardController?.hide()
+        onOpenFolder(weblink)
+    }
+
     val categories = listOf("Все", "Избранное", "Фото и видео", "Документы", "Архивы")
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = UiSpacing.large)
     ) {
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(UiSpacing.medium))
 
         // Quick Input Card
         Card(
@@ -103,7 +126,7 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(UiSpacing.large)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -127,7 +150,7 @@ fun HomeScreen(
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(UiSpacing.medium))
                     Column {
                         Text(
                             text = "Открыть публичную ссылку",
@@ -142,7 +165,7 @@ fun HomeScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(UiSpacing.medium))
 
                 OutlinedTextField(
                     value = inputUrl,
@@ -152,6 +175,11 @@ fun HomeScreen(
                     },
                     placeholder = { Text("Вставьте ссылку на файл или папку") },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Go
+                    ),
+                    keyboardActions = KeyboardActions(onGo = { submitLink() }),
                     isError = inputError != null,
                     supportingText = {
                         if (inputError != null) {
@@ -175,11 +203,11 @@ fun HomeScreen(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(UiSpacing.small))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
                 ) {
                     TextButton(
                         onClick = {
@@ -201,23 +229,12 @@ fun HomeScreen(
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(UiSpacing.iconGap))
                         Text("Вставить", fontSize = 14.sp)
                     }
 
                     Button(
-                        onClick = {
-                            if (inputUrl.isBlank()) {
-                                inputError = "Введите или вставьте ссылку"
-                                return@Button
-                            }
-                            val weblink = CloudUrlParser.extractWeblink(inputUrl)
-                            if (weblink == null) {
-                                inputError = "Неверный формат ссылки Облака Mail.ru"
-                                return@Button
-                            }
-                            onOpenFolder(weblink)
-                        },
+                        onClick = { submitLink() },
                         modifier = Modifier
                             .weight(1.3f)
                             .testTag("open_folder_button"),
@@ -232,17 +249,17 @@ fun HomeScreen(
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(UiSpacing.iconGap))
                         Text("Открыть", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(UiSpacing.small))
 
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(UiSpacing.large))
 
         // Search in saved links if list has items
         if (savedLinks.isNotEmpty() || searchQuery.isNotBlank()) {
@@ -265,6 +282,8 @@ fun HomeScreen(
                     }
                 },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("search_saved_links"),
@@ -274,7 +293,7 @@ fun HomeScreen(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                 )
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(UiSpacing.medium))
         }
 
         // Category Filter Chips
@@ -282,7 +301,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
         ) {
             categories.forEach { category ->
                 val isSelected = selectedCategory == category
@@ -310,7 +329,7 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(UiSpacing.medium))
 
         // Saved Links List
         if (savedLinks.isEmpty()) {
@@ -335,8 +354,8 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                verticalArrangement = Arrangement.spacedBy(UiSpacing.medium),
+                contentPadding = PaddingValues(bottom = UiSpacing.extraLarge)
             ) {
                 items(savedLinks, key = { it.id }) { link ->
                     SavedLinkCard(

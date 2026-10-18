@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.ui.theme.UiSpacing
 
 /** A consistent, accessible content state for loading, empty and recoverable error screens. */
 @Composable
@@ -33,7 +34,7 @@ fun ContentStatePanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(24.dp),
+            .padding(UiSpacing.extraLarge),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -52,14 +53,14 @@ fun ContentStatePanel(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(UiSpacing.large))
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(UiSpacing.small))
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
@@ -68,7 +69,7 @@ fun ContentStatePanel(
         )
 
         if (actionLabel != null && onAction != null) {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(UiSpacing.extraLarge))
             Button(onClick = onAction) {
                 Text(actionLabel)
             }

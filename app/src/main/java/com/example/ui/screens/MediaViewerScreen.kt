@@ -9,6 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -79,6 +80,8 @@ import com.example.data.api.CloudUrlParser
 import com.example.data.model.CloudItem
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.viewmodel.DownloadViewModel
+import com.example.ui.theme.UiMotionTokens
+import com.example.ui.theme.UiSpacing
 
 @Composable
 fun MediaViewerScreen(
@@ -148,8 +151,18 @@ fun MediaViewerScreen(
 
                 this@rowScope.AnimatedVisibility(
                     visible = showOverlay,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
+                    enter = fadeIn(
+                        animationSpec = tween(
+                            durationMillis = UiMotionTokens.shortDurationMillis,
+                            easing = UiMotionTokens.standardEasing
+                        )
+                    ),
+                    exit = fadeOut(
+                        animationSpec = tween(
+                            durationMillis = UiMotionTokens.shortDurationMillis,
+                            easing = UiMotionTokens.standardEasing
+                        )
+                    ),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -163,7 +176,7 @@ fun MediaViewerScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    .padding(horizontal = UiSpacing.small, vertical = UiSpacing.iconGap),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 IconButton(
@@ -219,7 +232,7 @@ fun MediaViewerScreen(
                                 onClick = { viewModel.previousMediaItem() },
                                 modifier = Modifier
                                     .align(Alignment.CenterStart)
-                                    .padding(start = 12.dp)
+                                    .padding(start = UiSpacing.medium)
                                     .background(Color(0x80000000), CircleShape)
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Предыдущий", tint = Color.White)
@@ -231,7 +244,7 @@ fun MediaViewerScreen(
                                 onClick = { viewModel.nextMediaItem() },
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
-                                    .padding(end = 12.dp)
+                                    .padding(end = UiSpacing.medium)
                                     .background(Color(0x80000000), CircleShape)
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Следующий", tint = Color.White)
@@ -267,7 +280,7 @@ private fun MediaFilmstripPanel(
         color = MaterialTheme.colorScheme.surface
     ) {
         Column {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
+            Column(modifier = Modifier.padding(horizontal = UiSpacing.extraLarge, vertical = UiSpacing.large)) {
                 Text(
                     text = folderTitle,
                     style = MaterialTheme.typography.titleMedium,
@@ -284,8 +297,8 @@ private fun MediaFilmstripPanel(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                contentPadding = PaddingValues(horizontal = UiSpacing.small, vertical = UiSpacing.extraSmall),
+                verticalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall)
             ) {
                 items(items, key = { it.weblink }) { mediaItem ->
                     val isCurrent = mediaItem.weblink == currentItem.weblink
@@ -302,7 +315,7 @@ private fun MediaFilmstripPanel(
                                 role = Role.Button,
                                 onClick = { viewModel.openMediaViewer(mediaItem) }
                             )
-                            .padding(8.dp),
+                            .padding(UiSpacing.small),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         AsyncImage(
@@ -314,7 +327,7 @@ private fun MediaFilmstripPanel(
                                 .clip(MaterialTheme.shapes.small)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(UiSpacing.medium))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = mediaItem.name,
@@ -424,9 +437,9 @@ private fun ZoomableImageContent(
 
         if (imageError) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                modifier = Modifier.fillMaxWidth().padding(UiSpacing.doubleExtraLarge),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(UiSpacing.medium)
             ) {
                 Text(
                     text = "Не удалось загрузить изображение",
@@ -453,7 +466,7 @@ private fun ZoomableImageContent(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 32.dp)
+                    .padding(bottom = UiSpacing.doubleExtraLarge)
                     .clickable {
                         scale = 1f
                         offsetX = 0f
@@ -461,7 +474,7 @@ private fun ZoomableImageContent(
                     }
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = UiSpacing.medium, vertical = UiSpacing.iconGap),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -470,7 +483,7 @@ private fun ZoomableImageContent(
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(UiSpacing.iconGap))
                     Text(
                         text = "${(scale * 100).toInt()}% • Сбросить зум",
                         color = Color.White,
@@ -542,9 +555,9 @@ private fun VideoPlayerContent(
 
         if (videoError) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                modifier = Modifier.fillMaxWidth().padding(UiSpacing.doubleExtraLarge),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(UiSpacing.medium)
             ) {
                 Text(
                     text = "Не удалось воспроизвести видео",

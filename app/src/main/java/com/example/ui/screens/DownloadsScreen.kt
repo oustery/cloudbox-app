@@ -70,6 +70,7 @@ import com.example.ui.theme.StatusSuccess
 import com.example.ui.theme.StatusWarning
 import com.example.ui.viewmodel.DownloadViewModel
 import java.io.File
+import com.example.ui.theme.UiSpacing
 
 @Composable
 fun DownloadsScreen(
@@ -99,7 +100,7 @@ fun DownloadsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = UiSpacing.large, vertical = UiSpacing.medium),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -136,8 +137,8 @@ fun DownloadsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = UiSpacing.large, vertical = UiSpacing.small),
+            horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
         ) {
             tabs.forEach { tab ->
                 val isSelected = activeTab == tab
@@ -182,8 +183,8 @@ fun DownloadsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                verticalArrangement = Arrangement.spacedBy(UiSpacing.medium),
+                contentPadding = PaddingValues(horizontal = UiSpacing.large, vertical = UiSpacing.small)
             ) {
                 items(downloads, key = { it.id }) { task ->
                     DownloadItemCard(
@@ -243,7 +244,7 @@ private fun DownloadItemCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(UiSpacing.medium)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -285,7 +286,7 @@ private fun DownloadItemCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(UiSpacing.medium))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -365,7 +366,7 @@ private fun DownloadItemCard(
 
             // Progress bar for active / paused downloads
             if (statusEnum == DownloadStatus.DOWNLOADING || statusEnum == DownloadStatus.PAUSED) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(UiSpacing.medium))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (statusEnum == DownloadStatus.DOWNLOADING && task.fileSize <= 0L) {
                         LinearProgressIndicator(
@@ -375,7 +376,7 @@ private fun DownloadItemCard(
                         )
                         Text(
                             text = "Размер неизвестен",
-                            modifier = Modifier.padding(start = 8.dp),
+                            modifier = Modifier.padding(start = UiSpacing.small),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -388,7 +389,7 @@ private fun DownloadItemCard(
                         )
                         Text(
                             text = if (task.fileSize > 0L) task.formattedProgress else "—",
-                            modifier = Modifier.padding(start = 8.dp),
+                            modifier = Modifier.padding(start = UiSpacing.small),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
