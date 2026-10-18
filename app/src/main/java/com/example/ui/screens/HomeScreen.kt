@@ -309,8 +309,7 @@ fun HomeScreen(
         }
 
         // Category Filter Chips
-        AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
-            categories.forEach { category ->
+        AdaptiveChipGroup(items = categories, modifier = Modifier.fillMaxWidth()) { category ->
                 val isSelected = selectedCategory == category
                 FilterChip(
                     selected = isSelected,
@@ -333,7 +332,6 @@ fun HomeScreen(
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.testTag("category_chip_$category")
                 )
-            }
         }
 
         Spacer(modifier = Modifier.height(UiSpacing.medium))

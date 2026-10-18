@@ -340,8 +340,7 @@ fun FolderExplorerScreen(
 
             Spacer(modifier = Modifier.height(UiSpacing.small))
 
-            AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
-                filterChips.forEach { chip ->
+            AdaptiveChipGroup(items = filterChips, modifier = Modifier.fillMaxWidth()) { chip ->
                     val isSelected = fileFilter == chip
                     FilterChip(
                         selected = isSelected,
@@ -354,7 +353,6 @@ fun FolderExplorerScreen(
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.testTag("explorer_filter_$chip")
                     )
-                }
             }
         }
 

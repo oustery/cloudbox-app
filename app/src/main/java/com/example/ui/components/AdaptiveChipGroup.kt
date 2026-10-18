@@ -1,9 +1,8 @@
 package com.example.ui.components
 
-import androidx.compose.foundation.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.ui.theme.UiSpacing
@@ -14,14 +13,18 @@ import com.example.ui.theme.UiSpacing
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AdaptiveChipGroup(
+fun <T> AdaptiveChipGroup(
+    items: List<T>,
     modifier: Modifier = Modifier,
-    content: @Composable FlowRowScope.() -> Unit
+    chipContent: @Composable (T) -> Unit
 ) {
     FlowRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(UiSpacing.small),
-        verticalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall),
-        content = content
-    )
+        verticalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall)
+    ) {
+        for (item in items) {
+            chipContent(item)
+        }
+    }
 }

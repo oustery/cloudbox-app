@@ -81,8 +81,10 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
-                    AppThemeMode.entries.forEach { mode ->
+                AdaptiveChipGroup(
+                    items = AppThemeMode.entries.toList(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { mode ->
                         FilterChip(
                             selected = settings.themeMode == mode,
                             onClick = { onThemeModeChanged(mode) },
@@ -92,7 +94,6 @@ fun SettingsScreen(
                                 selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         )
-                    }
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -128,20 +129,14 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
+                AdaptiveChipGroup(
+                    items = listOf(true, false),
+                    modifier = Modifier.fillMaxWidth()
+                ) { isGrid ->
                     FilterChip(
-                        selected = settings.gridByDefault,
-                        onClick = { onGridByDefaultChanged(true) },
-                        label = { Text("Сетка") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    )
-                    FilterChip(
-                        selected = !settings.gridByDefault,
-                        onClick = { onGridByDefaultChanged(false) },
-                        label = { Text("Список") },
+                        selected = settings.gridByDefault == isGrid,
+                        onClick = { onGridByDefaultChanged(isGrid) },
+                        label = { Text(if (isGrid) "Сетка" else "Список") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer

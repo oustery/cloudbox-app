@@ -57,15 +57,16 @@ class AdaptiveChipGroupTest {
                             .width(width)
                             .testTag("chip_viewport")
                     ) {
-                        AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
-                            labels.forEachIndexed { index, label ->
-                                FilterChip(
-                                    selected = index == 0,
-                                    onClick = {},
-                                    label = { Text(label, maxLines = 1, softWrap = false) },
-                                    modifier = Modifier.testTag("adaptive_chip_$index")
-                                )
-                            }
+                        AdaptiveChipGroup(
+                            items = labels.indices.toList(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { index ->
+                            FilterChip(
+                                selected = index == 0,
+                                onClick = {},
+                                label = { Text(labels[index], maxLines = 1, softWrap = false) },
+                                modifier = Modifier.testTag("adaptive_chip_$index")
+                            )
                         }
                     }
                 }

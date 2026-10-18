@@ -137,11 +137,11 @@ fun DownloadsScreen(
 
         // Tab Filter Chips
         AdaptiveChipGroup(
+            items = tabs,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = UiSpacing.large, vertical = UiSpacing.small)
-        ) {
-            tabs.forEach { tab ->
+        ) { tab ->
                 val isSelected = activeTab == tab
                 FilterChip(
                     selected = isSelected,
@@ -154,7 +154,6 @@ fun DownloadsScreen(
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.testTag("download_tab_$tab")
                 )
-            }
         }
 
         // Downloads List or Empty State
