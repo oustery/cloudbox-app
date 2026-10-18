@@ -30,18 +30,39 @@ class AdaptiveChipGroupTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun allChoicesWrapInside320DpViewportAtLargeFontScale() {
-        assertChipLayout(width = 320.dp, fontScale = 2f, expectWrap = true)
+    fun downloadFiltersStayInside320DpViewportAtLargeFontScale() {
+        assertChipLayout(
+            labels = listOf("Все", "В процессе", "Завершено", "С ошибками"),
+            width = 320.dp,
+            fontScale = 2f
+        )
+    }
+
+    @Test
+    fun homeCategoriesWrapAndStayInside320DpViewportAtLargeFontScale() {
+        assertChipLayout(
+            labels = listOf("Все", "Избранное", "Фото и видео", "Документы", "Архивы"),
+            width = 320.dp,
+            fontScale = 2f,
+            expectWrap = true
+        )
     }
 
     @Test
     fun allChoicesStayInside360DpViewportAtIncreasedFontScale() {
-        assertChipLayout(width = 360.dp, fontScale = 1.3f, expectWrap = false)
+        assertChipLayout(
+            labels = listOf("Все", "В процессе", "Завершено", "С ошибками"),
+            width = 360.dp,
+            fontScale = 1.3f
+        )
     }
 
-    private fun assertChipLayout(width: Dp, fontScale: Float, expectWrap: Boolean) {
-        val labels = listOf("Все", "В процессе", "Завершено", "С ошибками")
-
+    private fun assertChipLayout(
+        labels: List<String>,
+        width: Dp,
+        fontScale: Float,
+        expectWrap: Boolean = false
+    ) {
         composeRule.setContent {
             val currentDensity = LocalDensity.current
             CompositionLocalProvider(
@@ -87,7 +108,7 @@ class AdaptiveChipGroupTest {
         }
         if (expectWrap) {
             assertTrue(
-                "Large-font filter chips should wrap instead of disappearing off-screen",
+                "The five Home category chips should wrap at a 320 dp viewport",
                 chipBounds.last().top > chipBounds.first().top
             )
         }
