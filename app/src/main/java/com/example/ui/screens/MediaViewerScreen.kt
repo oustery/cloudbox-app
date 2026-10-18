@@ -128,7 +128,7 @@ fun MediaViewerScreen(
             .testTag("media_viewer_screen")
     ) {
         val showFilmstrip = maxWidth >= 720.dp
-        Row(modifier = Modifier.fillMaxSize()) {
+        Row(modifier = Modifier.fillMaxSize()) rowScope@ {
             Box(
                 modifier = if (showFilmstrip) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxSize()
             ) {
@@ -146,7 +146,7 @@ fun MediaViewerScreen(
                     )
                 }
 
-                AnimatedVisibility(
+                this@rowScope.AnimatedVisibility(
                     visible = showOverlay,
                     enter = fadeIn(),
                     exit = fadeOut(),

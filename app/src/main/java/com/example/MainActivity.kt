@@ -364,7 +364,7 @@ fun MainAppScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-        ) {
+        ) rowScope@{
             if (isWideWindow && activeMediaItem == null) {
                 NavigationRail(
                     modifier = Modifier
@@ -499,7 +499,7 @@ fun MainAppScreen(
                     }
                 }
 
-                AnimatedVisibility(
+                this@rowScope.AnimatedVisibility(
                     visible = activeMediaItem != null,
                     enter = slideInVertically(initialOffsetY = { it }),
                     exit = slideOutVertically(targetOffsetY = { it })
