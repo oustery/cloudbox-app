@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -198,6 +199,7 @@ fun MainAppScreen(
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
     ) {
         val isWideWindow = maxWidth >= 600.dp
+        val compactBottomNavigation = maxWidth < 360.dp || LocalDensity.current.fontScale >= 1.3f
 
         Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -293,7 +295,18 @@ fun MainAppScreen(
                                 contentDescription = "Главная"
                             )
                         },
-                        label = { Text("Главная", fontSize = 11.sp) },
+                        label = if (compactBottomNavigation) null else {
+                            {
+                                Text(
+                                    "Главная",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        },
+                        alwaysShowLabel = !compactBottomNavigation,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             selectedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -311,7 +324,18 @@ fun MainAppScreen(
                                 contentDescription = "Проводник"
                             )
                         },
-                        label = { Text("Проводник", fontSize = 11.sp) },
+                        label = if (compactBottomNavigation) null else {
+                            {
+                                Text(
+                                    "Проводник",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        },
+                        alwaysShowLabel = !compactBottomNavigation,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             selectedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -346,7 +370,18 @@ fun MainAppScreen(
                                 )
                             }
                         },
-                        label = { Text("Загрузки", fontSize = 11.sp) },
+                        label = if (compactBottomNavigation) null else {
+                            {
+                                Text(
+                                    "Загрузки",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        },
+                        alwaysShowLabel = !compactBottomNavigation,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             selectedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -363,7 +398,18 @@ fun MainAppScreen(
                                 contentDescription = "Настройки"
                             )
                         },
-                        label = { Text("Настройки", fontSize = 11.sp) },
+                        label = if (compactBottomNavigation) null else {
+                            {
+                                Text(
+                                    "Настройки",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        },
+                        alwaysShowLabel = !compactBottomNavigation,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             selectedTextColor = MaterialTheme.colorScheme.onSurface,

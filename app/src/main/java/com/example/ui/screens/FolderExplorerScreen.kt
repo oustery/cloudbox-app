@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CloudItem
+import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.FileItemCard
 import com.example.ui.components.ContentStatePanel
 import com.example.ui.viewmodel.CloudLinkViewModel
@@ -308,7 +309,14 @@ fun FolderExplorerScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.setFileSearchQuery(it) },
-                placeholder = { Text("Поиск файлов в этой папке...") },
+                placeholder = {
+                    Text(
+                        "Поиск в папке",
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
@@ -332,12 +340,7 @@ fun FolderExplorerScreen(
 
             Spacer(modifier = Modifier.height(UiSpacing.small))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
-            ) {
+            AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
                 filterChips.forEach { chip ->
                     val isSelected = fileFilter == chip
                     FilterChip(
@@ -348,7 +351,8 @@ fun FolderExplorerScreen(
                             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.testTag("explorer_filter_$chip")
                     )
                 }
             }

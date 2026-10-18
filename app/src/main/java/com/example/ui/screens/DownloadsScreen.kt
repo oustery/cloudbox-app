@@ -7,7 +7,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -64,6 +62,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.local.DownloadStatus
 import com.example.data.local.DownloadTaskEntity
+import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.ContentStatePanel
 import com.example.ui.theme.StatusError
 import com.example.ui.theme.StatusSuccess
@@ -104,16 +103,20 @@ fun DownloadsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Менеджер загрузок",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "Показано загрузок: ${downloads.size}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -133,12 +136,10 @@ fun DownloadsScreen(
         }
 
         // Tab Filter Chips
-        Row(
+        AdaptiveChipGroup(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = UiSpacing.large, vertical = UiSpacing.small),
-            horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
+                .padding(horizontal = UiSpacing.large, vertical = UiSpacing.small)
         ) {
             tabs.forEach { tab ->
                 val isSelected = activeTab == tab

@@ -3,7 +3,6 @@ package com.example.ui.screens
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +30,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.example.data.preferences.AppSettings
 import com.example.data.preferences.AppThemeMode
+import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.theme.UiSpacing
 
 @Composable
@@ -81,12 +81,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
-                ) {
+                AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
                     AppThemeMode.entries.forEach { mode ->
                         FilterChip(
                             selected = settings.themeMode == mode,
@@ -133,7 +128,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)) {
+                AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
                     FilterChip(
                         selected = settings.gridByDefault,
                         onClick = { onGridByDefaultChanged(true) },

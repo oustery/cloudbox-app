@@ -5,11 +5,11 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -59,17 +58,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.api.CloudUrlParser
 import com.example.ui.components.SavedLinkCard
 import com.example.ui.components.ContentStatePanel
+import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.CyanAccent
 import com.example.ui.viewmodel.CloudLinkViewModel
@@ -104,6 +105,17 @@ fun HomeScreen(
         inputError = null
         keyboardController?.hide()
         onOpenFolder(weblink)
+    }
+
+    fun pasteLinkFromClipboard() {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipData = clipboard.primaryClip
+        if (clipData != null && clipData.itemCount > 0) {
+            val text = clipData.getItemAt(0).text?.toString() ?: ""
+            if (text.isNotBlank()) {
+                inputUrl = text
+            }
+        }
     }
 
     val categories = listOf("Все", "Избранное", "Фото и видео", "Документы", "Архивы")
@@ -151,16 +163,21 @@ fun HomeScreen(
                         )
                     }
                     Spacer(modifier = Modifier.width(UiSpacing.medium))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Открыть публичную ссылку",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "https://cloud.mail.ru/public/...",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -173,7 +190,14 @@ fun HomeScreen(
                         inputUrl = it
                         inputError = null
                     },
-                    placeholder = { Text("Вставьте ссылку на файл или папку") },
+                    placeholder = {
+                        Text(
+                            "Вставьте ссылку",
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
@@ -205,52 +229,33 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(UiSpacing.small))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
-                ) {
-                    TextButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clipData = clipboard.primaryClip
-                            if (clipData != null && clipData.itemCount > 0) {
-                                val text = clipData.getItemAt(0).text?.toString() ?: ""
-                                if (text.isNotBlank()) {
-                                    inputUrl = text
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("paste_button"),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentPaste,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(UiSpacing.iconGap))
-                        Text("Вставить", fontSize = 14.sp)
-                    }
-
-                    Button(
-                        onClick = { submitLink() },
-                        modifier = Modifier
-                            .weight(1.3f)
-                            .testTag("open_folder_button"),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FolderOpen,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(UiSpacing.iconGap))
-                        Text("Открыть", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                val fontScale = LocalDensity.current.fontScale
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    if (maxWidth < 280.dp || fontScale >= 1.3f) {
+                        Column(verticalArrangement = Arrangement.spacedBy(UiSpacing.small)) {
+                            PasteLinkButton(
+                                onClick = { pasteLinkFromClipboard() },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OpenLinkButton(
+                                onClick = { submitLink() },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
+                        ) {
+                            PasteLinkButton(
+                                onClick = { pasteLinkFromClipboard() },
+                                modifier = Modifier.weight(1f)
+                            )
+                            OpenLinkButton(
+                                onClick = { submitLink() },
+                                modifier = Modifier.weight(1.3f)
+                            )
+                        }
                     }
                 }
 
@@ -266,7 +271,14 @@ fun HomeScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text("Поиск среди сохраненных...") },
+                placeholder = {
+                    Text(
+                        "Поиск сохранённых ссылок",
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -297,12 +309,7 @@ fun HomeScreen(
         }
 
         // Category Filter Chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
-        ) {
+        AdaptiveChipGroup(modifier = Modifier.fillMaxWidth()) {
             categories.forEach { category ->
                 val isSelected = selectedCategory == category
                 FilterChip(
@@ -367,5 +374,42 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PasteLinkButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier.testTag("paste_button")
+    ) {
+        Icon(
+            imageVector = Icons.Default.ContentPaste,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(UiSpacing.iconGap))
+        Text("Вставить", style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+private fun OpenLinkButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.testTag("open_folder_button"),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.FolderOpen,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(UiSpacing.iconGap))
+        Text("Открыть", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     }
 }
