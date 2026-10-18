@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -52,11 +54,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,8 +64,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.local.DownloadStatus
 import com.example.data.local.DownloadTaskEntity
-import com.example.ui.theme.CloudBlue
-import com.example.ui.theme.CyanAccent
+import com.example.ui.components.ContentStatePanel
 import com.example.ui.theme.StatusError
 import com.example.ui.theme.StatusSuccess
 import com.example.ui.theme.StatusWarning
@@ -80,7 +79,7 @@ fun DownloadsScreen(
 ) {
     val downloads by viewModel.downloads.collectAsStateWithLifecycle()
     val activeTab by viewModel.tabFilter.collectAsStateWithLifecycle()
-    val tabs = listOf("Все", "В процессе", "Завершено")
+    val tabs = listOf("Все", "В процессе", "Завершено", "С ошибками")
 
     BackHandler {
         onBack()
@@ -111,7 +110,7 @@ fun DownloadsScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Всего файлов: ${downloads.size}",
+                        text = "Показано загрузок: ${downloads.size}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -136,6 +135,7 @@ fun DownloadsScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -146,8 +146,8 @@ fun DownloadsScreen(
                     onClick = { viewModel.setFilter(tab) },
                     label = { Text(tab) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = CloudBlue,
-                        selectedLabelColor = Color.White
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.testTag("download_tab_$tab")
@@ -163,31 +163,19 @@ fun DownloadsScreen(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.DownloadDone,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Список загрузок пуст",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Скачанные из Облака файлы будут отображаться здесь",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center
-                    )
-                }
+                ContentStatePanel(
+                    title = if (activeTab == "Все") "Загрузок пока нет" else "В этом списке пока пусто",
+                    message = if (activeTab == "Все")
+                        "Файлы, которые вы скачиваете из облака, появятся здесь."
+                    else
+                        "Когда появятся загрузки в этой категории, они будут показаны здесь.",
+                    icon = Icons.Outlined.DownloadDone,
+                    actionLabel = if (activeTab != "Все") "Показать все" else null,
+                    onAction = if (activeTab != "Все") {
+                        { viewModel.setFilter("Все") }
+                    } else null,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         } else {
             LazyColumn(
@@ -224,6 +212,20 @@ private fun DownloadItemCard(
     } catch (e: Exception) {
         DownloadStatus.QUEUED
     }
+    val statusLabel = when (statusEnum) {
+        DownloadStatus.QUEUED -> "В очереди"
+        DownloadStatus.DOWNLOADING -> "Скачивается"
+        DownloadStatus.PAUSED -> "Приостановлено"
+        DownloadStatus.COMPLETED -> "Завершено"
+        DownloadStatus.FAILED -> "Ошибка"
+    }
+    val statusColor = when (statusEnum) {
+        DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.primary
+        DownloadStatus.COMPLETED -> StatusSuccess
+        DownloadStatus.PAUSED -> StatusWarning
+        DownloadStatus.FAILED -> StatusError
+        DownloadStatus.QUEUED -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Card(
         modifier = modifier
@@ -255,7 +257,7 @@ private fun DownloadItemCard(
                         .background(
                             when (statusEnum) {
                                 DownloadStatus.COMPLETED -> StatusSuccess.copy(alpha = 0.2f)
-                                DownloadStatus.DOWNLOADING -> CloudBlue.copy(alpha = 0.2f)
+                                DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.primaryContainer
                                 DownloadStatus.PAUSED -> StatusWarning.copy(alpha = 0.2f)
                                 DownloadStatus.FAILED -> StatusError.copy(alpha = 0.2f)
                                 else -> MaterialTheme.colorScheme.surface
@@ -274,7 +276,7 @@ private fun DownloadItemCard(
                         contentDescription = null,
                         tint = when (statusEnum) {
                             DownloadStatus.COMPLETED -> StatusSuccess
-                            DownloadStatus.DOWNLOADING -> CloudBlue
+                            DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.primary
                             DownloadStatus.PAUSED -> StatusWarning
                             DownloadStatus.FAILED -> StatusError
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -293,21 +295,23 @@ private fun DownloadItemCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = statusLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = statusColor
+                    )
                     Text(
                         text = when (statusEnum) {
                             DownloadStatus.DOWNLOADING -> "${task.formattedDownloaded} • ${task.formattedSpeed}"
-                            DownloadStatus.COMPLETED -> "Скачано (${task.formattedDownloaded})"
-                            DownloadStatus.PAUSED -> "Приостановлено (${task.formattedDownloaded})"
-                            DownloadStatus.FAILED -> task.errorMessage ?: "Ошибка загрузки"
-                            DownloadStatus.QUEUED -> "В очереди..."
+                            DownloadStatus.COMPLETED -> "Файл сохранён • ${task.formattedDownloaded}"
+                            DownloadStatus.PAUSED -> task.formattedDownloaded
+                            DownloadStatus.FAILED -> task.errorMessage ?: "Загрузку не удалось завершить"
+                            DownloadStatus.QUEUED -> "Начнётся автоматически"
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = when (statusEnum) {
-                            DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
-                            DownloadStatus.COMPLETED -> StatusSuccess
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -315,7 +319,7 @@ private fun DownloadItemCard(
                 when (statusEnum) {
                     DownloadStatus.DOWNLOADING -> {
                         IconButton(onClick = onPause) {
-                            Icon(Icons.Default.Pause, contentDescription = "Пауза", tint = CloudBlue)
+                            Icon(Icons.Default.Pause, contentDescription = "Пауза", tint = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(onClick = onCancel) {
                             Icon(Icons.Default.Close, contentDescription = "Отмена")
@@ -323,7 +327,7 @@ private fun DownloadItemCard(
                     }
                     DownloadStatus.PAUSED -> {
                         IconButton(onClick = onResume) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Возобновить", tint = CloudBlue)
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Возобновить", tint = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(onClick = onCancel) {
                             Icon(Icons.Default.Close, contentDescription = "Отмена")
@@ -331,7 +335,7 @@ private fun DownloadItemCard(
                     }
                     DownloadStatus.FAILED -> {
                         IconButton(onClick = onResume) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Повторить", tint = CloudBlue)
+                            Icon(Icons.Default.Refresh, contentDescription = "Повторить", tint = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(onClick = onCancel) {
                             Icon(Icons.Default.Close, contentDescription = "Удалить")
@@ -344,7 +348,7 @@ private fun DownloadItemCard(
                                     openDownloadedFile(context, task.destinationPath)
                                 }
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Открыть", tint = CloudBlue)
+                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Открыть", tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                         IconButton(onClick = onCancel) {
@@ -362,15 +366,34 @@ private fun DownloadItemCard(
             // Progress bar for active / paused downloads
             if (statusEnum == DownloadStatus.DOWNLOADING || statusEnum == DownloadStatus.PAUSED) {
                 Spacer(modifier = Modifier.height(10.dp))
-                LinearProgressIndicator(
-                    progress = { task.progressPercent },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = if (statusEnum == DownloadStatus.DOWNLOADING) CloudBlue else StatusWarning,
-                    trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (statusEnum == DownloadStatus.DOWNLOADING && task.fileSize <= 0L) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.weight(1f).height(4.dp),
+                            color = statusColor,
+                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                        Text(
+                            text = "Размер неизвестен",
+                            modifier = Modifier.padding(start = 8.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            progress = { task.progressPercent },
+                            modifier = Modifier.weight(1f).height(4.dp),
+                            color = statusColor,
+                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                        Text(
+                            text = if (task.fileSize > 0L) task.formattedProgress else "—",
+                            modifier = Modifier.padding(start = 8.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }

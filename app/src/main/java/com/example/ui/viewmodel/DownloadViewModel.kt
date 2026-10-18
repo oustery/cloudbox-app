@@ -18,7 +18,7 @@ class DownloadViewModel(
     private val repository: DownloadRepository
 ) : ViewModel() {
 
-    private val _tabFilter = MutableStateFlow("Все") // "Все", "В процессе", "Завершено"
+    private val _tabFilter = MutableStateFlow("Все") // "Все", "В процессе", "Завершено", "С ошибками"
     val tabFilter: StateFlow<String> = _tabFilter.asStateFlow()
 
     val downloads: StateFlow<List<DownloadTaskEntity>> = combine(
@@ -28,6 +28,7 @@ class DownloadViewModel(
         when (filter) {
             "В процессе" -> list.filter { it.status == DownloadStatus.DOWNLOADING.name || it.status == DownloadStatus.QUEUED.name }
             "Завершено" -> list.filter { it.status == DownloadStatus.COMPLETED.name }
+            "С ошибками" -> list.filter { it.status == DownloadStatus.FAILED.name }
             else -> list
         }
     }.stateIn(

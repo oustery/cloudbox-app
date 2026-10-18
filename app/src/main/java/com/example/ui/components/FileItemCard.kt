@@ -2,7 +2,7 @@ package com.example.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,7 +50,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.CloudItem
 import com.example.ui.theme.CloudBlue
@@ -109,10 +108,10 @@ private fun FileGridItem(
             .fillMaxWidth()
             .aspectRatio(0.85f)
             .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .border(
-                width = if (isSelected) 2.5.dp else 1.dp,
-                color = if (isSelected) CyanAccent else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                width = if (isSelected) 2.dp else 1.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                 shape = RoundedCornerShape(14.dp)
             )
             .testTag("file_grid_item_${item.name}"),
@@ -172,7 +171,7 @@ private fun FileGridItem(
                 Text(
                     text = item.name,
                     color = Color.White,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -180,7 +179,7 @@ private fun FileGridItem(
                 Text(
                     text = item.formattedSize,
                     color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 10.sp
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
 
@@ -195,7 +194,7 @@ private fun FileGridItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Video",
+                        contentDescription = "Видеофайл",
                         tint = Color.White,
                         modifier = Modifier.padding(6.dp)
                     )
@@ -208,13 +207,12 @@ private fun FileGridItem(
                     onClick = onClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(32.dp)
+                        .padding(2.dp)
                 ) {
                     Icon(
                         imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
-                        contentDescription = "Select",
-                        tint = if (isSelected) CyanAccent else Color.White.copy(alpha = 0.7f)
+                        contentDescription = if (isSelected) "Снять выделение" else "Выбрать файл",
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary else Color.White
                     )
                 }
             } else if (!item.isFolder) {
@@ -223,7 +221,6 @@ private fun FileGridItem(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp)
-                        .size(28.dp)
                         .background(Color(0x80000000), CircleShape)
                 ) {
                     Icon(
@@ -253,15 +250,15 @@ private fun FileListItem(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .border(
                 width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) CyanAccent else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(12.dp)
             )
             .testTag("file_list_item_${item.name}"),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
         )
     ) {
@@ -330,8 +327,8 @@ private fun FileListItem(
                 ) {
                     Icon(
                         imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
-                        contentDescription = "Select",
-                        tint = if (isSelected) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant
+                        contentDescription = if (isSelected) "Снять выделение" else "Выбрать файл",
+                        tint = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else if (!item.isFolder) {

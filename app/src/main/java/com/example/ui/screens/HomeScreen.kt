@@ -5,7 +5,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +45,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,12 +59,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.api.CloudUrlParser
 import com.example.ui.components.SavedLinkCard
+import com.example.ui.components.ContentStatePanel
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.CyanAccent
 import com.example.ui.viewmodel.CloudLinkViewModel
@@ -130,7 +130,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Публичная ссылка Облака",
+                            text = "Открыть публичную ссылку",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -170,7 +170,7 @@ fun HomeScreen(
                         .testTag("link_input_field"),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = CloudBlue,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     )
                 )
@@ -181,7 +181,7 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
+                    TextButton(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clipData = clipboard.primaryClip
@@ -195,11 +195,6 @@ fun HomeScreen(
                         modifier = Modifier
                             .weight(1f)
                             .testTag("paste_button"),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
                     ) {
                         Icon(
                             imageVector = Icons.Default.ContentPaste,
@@ -207,7 +202,7 @@ fun HomeScreen(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Вставить", fontSize = 13.sp)
+                        Text("Вставить", fontSize = 14.sp)
                     }
 
                     Button(
@@ -228,8 +223,8 @@ fun HomeScreen(
                             .testTag("open_folder_button"),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = CloudBlue,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Icon(
@@ -244,29 +239,6 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // One-tap sample test link button
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable {
-                            inputUrl = "https://cloud.mail.ru/public/KVy7/S1hRRPVUE"
-                        }
-                        .padding(vertical = 4.dp, horizontal = 4.dp)
-                ) {
-                    Text(
-                        text = "Пример ссылки: ",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "KVy7/S1hRRPVUE",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CloudBlue,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
             }
         }
 
@@ -298,7 +270,7 @@ fun HomeScreen(
                     .testTag("search_saved_links"),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = CloudBlue,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                 )
             )
@@ -329,8 +301,8 @@ fun HomeScreen(
                         }
                     } else null,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = CloudBlue,
-                        selectedLabelColor = Color.White
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.testTag("category_chip_$category")
@@ -348,34 +320,15 @@ fun HomeScreen(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.FolderSpecial,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = if (searchQuery.isNotBlank()) "Ничего не найдено" else "Нет сохраненных ссылок",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (searchQuery.isNotBlank())
-                            "Попробуйте изменить запрос"
-                        else
-                            "Вставьте ссылку выше и нажмите «Открыть» — папка автоматически сохранится в вашу библиотеку.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center
-                    )
-                }
+                ContentStatePanel(
+                    title = if (searchQuery.isNotBlank()) "Ничего не найдено" else "Нет сохранённых ссылок",
+                    message = if (searchQuery.isNotBlank())
+                        "Попробуйте изменить запрос или очистить поиск."
+                    else
+                        "Вставьте публичную ссылку выше и нажмите «Открыть». Ссылка появится здесь.",
+                    icon = Icons.Outlined.FolderSpecial,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         } else {
             LazyColumn(

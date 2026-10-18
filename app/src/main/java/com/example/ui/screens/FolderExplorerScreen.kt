@@ -43,11 +43,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -59,18 +59,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CloudItem
 import com.example.ui.components.FileItemCard
-import com.example.ui.theme.CloudBlue
-import com.example.ui.theme.CyanAccent
+import com.example.ui.components.ContentStatePanel
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.viewmodel.DownloadViewModel
 
@@ -207,15 +204,13 @@ fun FolderExplorerScreen(
                     ) {
                         breadcrumbs.forEachIndexed { index, crumb ->
                             val isLast = index == breadcrumbs.size - 1
-                            Text(
-                                text = crumb.title,
-                                fontSize = 12.sp,
-                                fontWeight = if (isLast) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isLast) CloudBlue else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .clickable(!isLast) { viewModel.navigateToBreadcrumb(crumb) }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            InputChip(
+                                selected = isLast,
+                                onClick = {
+                                    if (!isLast) viewModel.navigateToBreadcrumb(crumb)
+                                },
+                                label = { Text(crumb.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                modifier = Modifier.testTag("breadcrumb_${index}")
                             )
                             if (!isLast) {
                                 Icon(
@@ -268,7 +263,7 @@ fun FolderExplorerScreen(
                                 downloadViewModel.downloadBatch(itemsToDownload)
                                 viewModel.clearSelection()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = CloudBlue),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -304,7 +299,7 @@ fun FolderExplorerScreen(
                     .testTag("explorer_search_field"),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = CloudBlue,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
                 )
             )
@@ -324,8 +319,8 @@ fun FolderExplorerScreen(
                         onClick = { viewModel.setFileTypeFilter(chip) },
                         label = { Text(chip) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = CloudBlue,
-                            selectedLabelColor = Color.White
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ),
                         shape = RoundedCornerShape(16.dp)
                     )
@@ -341,75 +336,43 @@ fun FolderExplorerScreen(
         ) {
             when {
                 isLoading -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator(color = CloudBlue)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Загрузка файлов из Облака...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    ContentStatePanel(
+                        title = "Загружаем файлы",
+                        message = "Получаем содержимое папки из облака.",
+                        isLoading = true,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 error != null -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.FolderOff,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Ошибка доступа",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = error!!,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = {
-                                currentFolder?.weblinkKey?.let { viewModel.loadFolder(it, resetStack = false) }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = CloudBlue)
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Повторить")
-                        }
-                    }
+                    ContentStatePanel(
+                        title = "Не удалось открыть папку",
+                        message = error.orEmpty(),
+                        icon = Icons.Outlined.FolderOff,
+                        actionLabel = "Повторить",
+                        onAction = { viewModel.retryLastFolderLoad() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 filteredItems.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Файлы не найдены",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    val hasActiveFilter = searchQuery.isNotBlank() || fileFilter != "Все"
+                    ContentStatePanel(
+                        title = if (hasActiveFilter) "Ничего не найдено" else "Папка пуста",
+                        message = if (hasActiveFilter)
+                            "Измените запрос или сбросьте выбранные фильтры."
+                        else
+                            "В этой папке пока нет файлов.",
+                        icon = Icons.Outlined.FolderOff,
+                        actionLabel = if (hasActiveFilter) "Сбросить фильтры" else null,
+                        onAction = if (hasActiveFilter) {
+                            {
+                                viewModel.setFileSearchQuery("")
+                                viewModel.setFileTypeFilter("Все")
+                            }
+                        } else null,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 isGridView -> {

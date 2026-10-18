@@ -64,6 +64,8 @@ class CloudLinkViewModel(
 
     private val _folderError = MutableStateFlow<String?>(null)
     val folderError: StateFlow<String?> = _folderError.asStateFlow()
+    private var lastRequestedWeblink: String? = null
+    private var lastRequestResetStack: Boolean = true
 
     private val _folderBreadcrumbs = MutableStateFlow<List<FolderStackEntry>>(emptyList())
     val folderBreadcrumbs: StateFlow<List<FolderStackEntry>> = _folderBreadcrumbs.asStateFlow()
@@ -115,6 +117,10 @@ class CloudLinkViewModel(
         _isGridView.value = !_isGridView.value
     }
 
+    fun setGridView(isGrid: Boolean) {
+        _isGridView.value = isGrid
+    }
+
     fun openMediaViewer(item: CloudItem) {
         _activeMediaItem.value = item
     }
@@ -148,6 +154,8 @@ class CloudLinkViewModel(
 
     fun loadFolder(rawUrlOrWeblink: String, resetStack: Boolean = true) {
         val weblink = CloudUrlParser.extractWeblink(rawUrlOrWeblink) ?: rawUrlOrWeblink
+        lastRequestedWeblink = weblink
+        lastRequestResetStack = resetStack
         _isLoadingFolder.value = true
         _folderError.value = null
         _selectedItems.value = emptySet()
@@ -190,6 +198,10 @@ class CloudLinkViewModel(
                 _folderError.value = exception.message ?: "Не удалось открыть папку"
             }
         }
+    }
+
+    fun retryLastFolderLoad() {
+        lastRequestedWeblink?.let { loadFolder(it, resetStack = lastRequestResetStack) }
     }
 
     fun navigateToBreadcrumb(entry: FolderStackEntry) {

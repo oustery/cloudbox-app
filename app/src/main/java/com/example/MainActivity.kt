@@ -10,11 +10,14 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -28,9 +31,11 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +45,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -63,12 +71,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.api.CloudUrlParser
 import com.example.data.local.AppDatabase
+import com.example.data.preferences.AppSettings
+import com.example.data.preferences.AppSettingsViewModel
+import com.example.data.preferences.AppThemeMode
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.DownloadRepository
 import com.example.ui.screens.DownloadsScreen
 import com.example.ui.screens.FolderExplorerScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MediaViewerScreen
+import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.CyanAccent
 import com.example.ui.theme.MyApplicationTheme
@@ -92,6 +104,8 @@ class MainActivity : ComponentActivity() {
         DownloadViewModelFactory(downloadRepo)
     }
 
+    private val settingsViewModel: AppSettingsViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -100,10 +114,22 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
 
         setContent {
-            MyApplicationTheme {
+            val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+            val darkTheme = when (settings.themeMode) {
+                AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+                AppThemeMode.LIGHT -> false
+                AppThemeMode.DARK -> true
+            }
+
+            MyApplicationTheme(
+                darkTheme = darkTheme,
+                dynamicColor = settings.dynamicColors
+            ) {
                 MainAppScreen(
                     cloudViewModel = cloudViewModel,
-                    downloadViewModel = downloadViewModel
+                    downloadViewModel = downloadViewModel,
+                    settings = settings,
+                    settingsViewModel = settingsViewModel
                 )
             }
         }
@@ -129,12 +155,23 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppScreen(
     cloudViewModel: CloudLinkViewModel,
-    downloadViewModel: DownloadViewModel
+    downloadViewModel: DownloadViewModel,
+    settings: AppSettings,
+    settingsViewModel: AppSettingsViewModel
 ) {
-    var currentScreen by remember { mutableStateOf("home") } // "home", "explorer", "downloads"
+    var currentScreen by remember { mutableStateOf("home") } // home, explorer, downloads, settings
+    var previousScreen by remember { mutableStateOf("home") }
+    val openSettings = {
+        if (currentScreen != "settings") previousScreen = currentScreen
+        currentScreen = "settings"
+    }
     val activeDownloadsCount by downloadViewModel.activeCount.collectAsStateWithLifecycle()
     val currentFolder by cloudViewModel.currentFolder.collectAsStateWithLifecycle()
     val activeMediaItem by cloudViewModel.activeMediaItem.collectAsStateWithLifecycle()
+
+    LaunchedEffect(settings.gridByDefault) {
+        cloudViewModel.setGridView(settings.gridByDefault)
+    }
 
     // When folder finishes loading, switch to explorer screen
     LaunchedEffect(currentFolder) {
@@ -143,7 +180,10 @@ fun MainAppScreen(
         }
     }
 
-    Scaffold(
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isWideWindow = maxWidth >= 600.dp
+
+        Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             if (activeMediaItem == null && currentScreen != "explorer") {
@@ -221,7 +261,7 @@ fun MainAppScreen(
             }
         },
         bottomBar = {
-            if (activeMediaItem == null) {
+            if (!isWideWindow && activeMediaItem == null) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 6.dp,
@@ -240,9 +280,9 @@ fun MainAppScreen(
                         },
                         label = { Text("Главная", fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = CloudBlue,
-                            selectedTextColor = CloudBlue,
-                            indicatorColor = CloudBlue.copy(alpha = 0.15f)
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
                         ),
                         modifier = Modifier.testTag("nav_item_home")
                     )
@@ -258,9 +298,9 @@ fun MainAppScreen(
                         },
                         label = { Text("Проводник", fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = CloudBlue,
-                            selectedTextColor = CloudBlue,
-                            indicatorColor = CloudBlue.copy(alpha = 0.15f)
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
                         ),
                         modifier = Modifier.testTag("nav_item_explorer")
                     )
@@ -293,61 +333,188 @@ fun MainAppScreen(
                         },
                         label = { Text("Загрузки", fontSize = 11.sp) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = CloudBlue,
-                            selectedTextColor = CloudBlue,
-                            indicatorColor = CloudBlue.copy(alpha = 0.15f)
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
                         ),
                         modifier = Modifier.testTag("nav_item_downloads")
+                    )
+                    NavigationBarItem(
+                        selected = currentScreen == "settings",
+                        onClick = openSettings,
+                        icon = {
+                            Icon(
+                                imageVector = if (currentScreen == "settings") Icons.Filled.Settings else Icons.Outlined.Settings,
+                                contentDescription = "Настройки"
+                            )
+                        },
+                        label = { Text("Настройки", fontSize = 11.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        modifier = Modifier.testTag("nav_item_settings")
                     )
                 }
             }
         }
     ) { innerPadding ->
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when (currentScreen) {
-                "home" -> {
-                    HomeScreen(
-                        viewModel = cloudViewModel,
-                        onOpenFolder = { weblink ->
-                            cloudViewModel.loadFolder(weblink)
-                            currentScreen = "explorer"
-                        }
+            if (isWideWindow && activeMediaItem == null) {
+                NavigationRail(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .testTag("main_navigation_rail"),
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    NavigationRailItem(
+                        selected = currentScreen == "home",
+                        onClick = { currentScreen = "home" },
+                        icon = {
+                            Icon(
+                                imageVector = if (currentScreen == "home") Icons.Filled.Home else Icons.Outlined.Home,
+                                contentDescription = "Главная"
+                            )
+                        },
+                        label = { Text("Главная") },
+                        alwaysShowLabel = true,
+                        colors = NavigationRailItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        modifier = Modifier.testTag("rail_item_home")
                     )
-                }
-                "explorer" -> {
-                    FolderExplorerScreen(
-                        viewModel = cloudViewModel,
-                        downloadViewModel = downloadViewModel,
-                        onBack = { currentScreen = "home" }
+                    NavigationRailItem(
+                        selected = currentScreen == "explorer",
+                        onClick = { currentScreen = "explorer" },
+                        icon = {
+                            Icon(
+                                imageVector = if (currentScreen == "explorer") Icons.Filled.Folder else Icons.Outlined.Folder,
+                                contentDescription = "Проводник"
+                            )
+                        },
+                        label = { Text("Проводник") },
+                        alwaysShowLabel = true,
+                        colors = NavigationRailItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        modifier = Modifier.testTag("rail_item_explorer")
                     )
-                }
-                "downloads" -> {
-                    DownloadsScreen(
-                        viewModel = downloadViewModel,
-                        onBack = { currentScreen = "home" }
+                    NavigationRailItem(
+                        selected = currentScreen == "downloads",
+                        onClick = { currentScreen = "downloads" },
+                        icon = {
+                            BadgedBox(
+                                badge = {
+                                    if (activeDownloadsCount > 0) {
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.tertiary,
+                                            contentColor = MaterialTheme.colorScheme.onTertiary
+                                        ) {
+                                            Text(activeDownloadsCount.toString())
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = if (currentScreen == "downloads") Icons.Filled.CloudDownload else Icons.Outlined.CloudDownload,
+                                    contentDescription = "Загрузки"
+                                )
+                            }
+                        },
+                        label = { Text("Загрузки") },
+                        alwaysShowLabel = true,
+                        colors = NavigationRailItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        modifier = Modifier.testTag("rail_item_downloads")
+                    )
+                    NavigationRailItem(
+                        selected = currentScreen == "settings",
+                        onClick = openSettings,
+                        icon = {
+                            Icon(
+                                imageVector = if (currentScreen == "settings") Icons.Filled.Settings else Icons.Outlined.Settings,
+                                contentDescription = "Настройки"
+                            )
+                        },
+                        label = { Text("Настройки") },
+                        alwaysShowLabel = true,
+                        colors = NavigationRailItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        modifier = Modifier.testTag("rail_item_settings")
                     )
                 }
             }
 
-            // Fullscreen Media Viewer Overlay
-            AnimatedVisibility(
-                visible = activeMediaItem != null,
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it })
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
             ) {
-                activeMediaItem?.let { item ->
-                    MediaViewerScreen(
-                        item = item,
-                        viewModel = cloudViewModel,
-                        downloadViewModel = downloadViewModel,
-                        onClose = { cloudViewModel.closeMediaViewer() }
-                    )
+                when (currentScreen) {
+                    "home" -> {
+                        HomeScreen(
+                            viewModel = cloudViewModel,
+                            onOpenFolder = { weblink ->
+                                cloudViewModel.loadFolder(weblink)
+                                currentScreen = "explorer"
+                            }
+                        )
+                    }
+                    "explorer" -> {
+                        FolderExplorerScreen(
+                            viewModel = cloudViewModel,
+                            downloadViewModel = downloadViewModel,
+                            onBack = { currentScreen = "home" }
+                        )
+                    }
+                    "downloads" -> {
+                        DownloadsScreen(
+                            viewModel = downloadViewModel,
+                            onBack = { currentScreen = "home" }
+                        )
+                    }
+                    "settings" -> {
+                        SettingsScreen(
+                            settings = settings,
+                            onThemeModeChanged = settingsViewModel::setThemeMode,
+                            onDynamicColorsChanged = settingsViewModel::setDynamicColors,
+                            onGridByDefaultChanged = settingsViewModel::setGridByDefault,
+                            onBack = { currentScreen = previousScreen }
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = activeMediaItem != null,
+                    enter = slideInVertically(initialOffsetY = { it }),
+                    exit = slideOutVertically(targetOffsetY = { it })
+                ) {
+                    activeMediaItem?.let { item ->
+                        MediaViewerScreen(
+                            item = item,
+                            viewModel = cloudViewModel,
+                            downloadViewModel = downloadViewModel,
+                            onClose = { cloudViewModel.closeMediaViewer() }
+                        )
+                    }
                 }
             }
         }
+    }
     }
 }
