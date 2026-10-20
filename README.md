@@ -181,7 +181,7 @@ app/build/outputs/apk/release/
 
 The repository owns two separate workflows:
 
-- `.github/workflows/ci.yml` runs on pull requests, pushes to `main`, and manual dispatch. It validates the checked-in Gradle wrapper, runs unit/Robolectric tests and Android lint, builds a debug APK, and uploads that APK as a short-lived Actions artifact. It has read-only repository permissions.
+- `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. It validates the checked-in Gradle wrapper, runs unit/Robolectric tests and Android lint, builds a debug APK, and uploads that APK as a short-lived Actions artifact. It has read-only repository permissions.
 - `.github/workflows/release.yml` publishes a rolling `latest` prerelease only after a successful CI push to `main`. A `v*` tag starts a separate release run that validates wrapper, tests, lint, and debug build before packaging. Both paths build arm64-v8a, armeabi-v7a, and universal release APKs and verify SHA-256 checksums.
 
 A successful `main` build updates the rolling `latest` prerelease. To make a versioned release, push a semantic version tag after merging the release-ready commit:
