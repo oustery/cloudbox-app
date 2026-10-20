@@ -32,6 +32,9 @@ class CloudLinkViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _linkInput = MutableStateFlow("")
+    val linkInput: StateFlow<String> = _linkInput.asStateFlow()
+
     // Filtered saved links
     val savedLinks: StateFlow<List<SavedLinkEntity>> = combine(
         repository.allSavedLinks,
@@ -109,6 +112,11 @@ class CloudLinkViewModel(
         _searchQuery.value = query
     }
 
+    fun setLinkInput(value: String) {
+        _linkInput.value = value
+        _folderError.value = null
+    }
+
     fun setFileTypeFilter(filter: String) {
         _fileTypeFilter.value = filter
     }
@@ -174,6 +182,10 @@ class CloudLinkViewModel(
             result.onSuccess { folderResult ->
                 _currentFolder.value = folderResult
                 _isLoadingFolder.value = false
+
+                if (resetStack) {
+                    _linkInput.value = ""
+                }
 
                 if (resetStack) {
                     _folderBreadcrumbs.value = listOf(
