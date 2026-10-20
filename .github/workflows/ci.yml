@@ -45,6 +45,13 @@ jobs:
           java-version: '17'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Create temporary debug signing key
+        run: >-
+          keytool -genkeypair -noprompt
+          -keystore "$GITHUB_WORKSPACE/debug.keystore"
+          -storepass android -keypass android -alias androiddebugkey
+          -keyalg RSA -keysize 2048 -validity 10000
+          -dname "CN=Android Debug,O=Android,C=US"
       - name: Run unit tests, Android lint, and debug build
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
       - name: Upload debug APK
