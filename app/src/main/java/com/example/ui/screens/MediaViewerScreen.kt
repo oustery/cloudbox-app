@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.widget.MediaController
@@ -40,6 +42,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
@@ -51,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -93,30 +97,41 @@ fun MediaViewerScreen(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
-    val activity = context as? Activity
+    val activity = context.findActivity()
     val currentFolder by viewModel.currentFolder.collectAsStateWithLifecycle()
     val mediaItems = currentFolder?.items?.filter { it.isImage || it.isVideo }.orEmpty()
     val currentMediaIndex = mediaItems.indexOfFirst { it.weblink == item.weblink }
     val hasPreviousMedia = currentMediaIndex > 0
     val hasNextMedia = currentMediaIndex >= 0 && currentMediaIndex < mediaItems.lastIndex
     var showOverlay by remember(item.weblink) { mutableStateOf(true) }
+    var showMetadata by remember(item.weblink) { mutableStateOf(false) }
 
     DisposableEffect(activity, view) {
         val window = activity?.window
         val controller = window?.let { WindowInsetsControllerCompat(it, view) }
         val wereSystemBarsVisible = window?.decorView?.rootWindowInsets?.let {
-            WindowInsetsCompat.toWindowInsetsCompat(it).isVisible(WindowInsetsCompat.Type.systemBars())
+            WindowInsetsCompat.toWindowInsetsCompat(it, view).isVisible(WindowInsetsCompat.Type.systemBars())
         } ?: true
+        val previousSystemBarsBehavior = controller?.systemBarsBehavior
 
         controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller?.hide(WindowInsetsCompat.Type.systemBars())
 
         onDispose {
+            previousSystemBarsBehavior?.let { controller?.systemBarsBehavior = it }
             if (wereSystemBarsVisible) {
                 controller?.show(WindowInsetsCompat.Type.systemBars())
             } else {
                 controller?.hide(WindowInsetsCompat.Type.systemBars())
             }
+        }
+    }
+
+    LaunchedEffect(activity, view, showOverlay) {
+        val controller = activity?.window?.let { WindowInsetsControllerCompat(it, view) }
+        if (showOverlay) {
+            controller?.show(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller?.hide(WindowInsetsCompat.Type.systemBars())
         }
     }
 
@@ -250,6 +265,32 @@ fun MediaViewerScreen(
                                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Следующий", tint = Color.White)
                             }
                         }
+
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .padding(horizontal = UiSpacing.medium, vertical = UiSpacing.small),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(UiSpacing.small)
+                        ) {
+                            AnimatedVisibility(visible = showMetadata) {
+                                MediaMetadataPanel(item = item, modifier = Modifier.fillMaxWidth())
+                            }
+                            Surface(color = Color(0xCC000000), shape = MaterialTheme.shapes.extraLarge) {
+                                IconButton(
+                                    onClick = { showMetadata = !showMetadata },
+                                    modifier = Modifier.testTag("media_viewer_metadata_toggle")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = if (showMetadata) "Скрыть сведения" else "Показать сведения",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -261,6 +302,44 @@ fun MediaViewerScreen(
                     folderTitle = currentFolder?.name ?: "Папка",
                     viewModel = viewModel,
                     modifier = Modifier.width(300.dp).fillMaxHeight()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun MediaMetadataPanel(item: CloudItem, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.testTag("media_viewer_metadata_panel"),
+        color = Color(0xE6000000),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = UiSpacing.large, vertical = UiSpacing.medium),
+            verticalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall)
+        ) {
+            Text(
+                text = if (item.isVideo) "Видео" else "Фото",
+                color = Color.White,
+                style = MaterialTheme.typography.titleSmall
+            )
+            Text(
+                text = "Размер · ${item.formattedSize}",
+                color = Color.White.copy(alpha = 0.86f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = item.formattedDate.takeIf { it.isNotBlank() }?.let { "Изменено · $it" }
+                    ?: "Дата не указана",
+                color = Color.White.copy(alpha = 0.86f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            item.formattedDuration?.let { duration ->
+                Text(
+                    text = "Длительность · $duration",
+                    color = Color.White.copy(alpha = 0.86f),
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
@@ -576,4 +655,10 @@ private fun VideoPlayerContent(
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
