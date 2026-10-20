@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      android-and-compose:
+        patterns:
+          - "androidx.*"
+          - "com.android.*"
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"
+      networking-and-serialization:
+        patterns:
+          - "com.squareup.*"
+          - "com.squareup.retrofit2*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

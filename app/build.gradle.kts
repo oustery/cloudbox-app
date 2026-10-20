@@ -8,6 +8,9 @@ plugins {
   // alias(libs.plugins.google.services)
 }
 
+val appVersionCode = providers.gradleProperty("appVersionCode").orNull?.toIntOrNull() ?: 1
+val appVersionName = providers.gradleProperty("appVersionName").orNull ?: "1.0"
+
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -16,8 +19,8 @@ android {
     applicationId = "com.aistudio.cloudbox.nxwzqp"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = appVersionCode
+    versionName = appVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -29,7 +32,7 @@ android {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       storeFile = file(keystorePath)
       storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
+      keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     create("debugConfig") {

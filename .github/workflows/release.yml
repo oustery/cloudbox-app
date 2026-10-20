@@ -1,189 +1,178 @@
-name: Build & Publish Release
+name: CD / Publish Android release
 
 on:
   push:
-    branches:
-      - main
-      - master
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 'Tag name for the release (e.g. v1.0.0 or latest)'
-        required: false
-        default: 'v1.0.0'
-      release_title:
-        description: 'Release Title'
-        required: false
-        default: 'CloudBox Release'
-      is_draft:
-        description: 'Create as draft'
-        type: boolean
-        default: false
-      is_prerelease:
-        description: 'Create as pre-release'
-        type: boolean
-        default: false
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: cloudbox-release-${{ github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build-and-release:
-    name: Build Multi-Arch Release APKs
-    runs-on: ubuntu-latest
-
+  publish:
+    name: Build and publish signed APKs
+    if: >-
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
     steps:
-      - name: Checkout Code
+      - name: Check out the exact CI-verified commit
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
-
+          persist-credentials: false
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'gradle'
-
-      - name: Setup Gradle
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.3.1'
-
-      - name: Ensure Gradlew is Executable
+      - name: Run validation for version tags
+        if: github.event_name == 'push'
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - name: Resolve release version
+        id: release
+        env:
+          SOURCE_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
+          SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          RELEASE_RUN_NUMBER: ${{ github.run_number }}
+        shell: bash
         run: |
-          if [ ! -f ./gradlew ]; then
-            echo "Generating Gradle wrapper for 9.3.1..."
-            gradle wrapper --gradle-version 9.3.1
-          fi
-          chmod +x ./gradlew
-
-      - name: Run Tests
-        run: |
-          ./gradlew :app:testDebugUnitTest --no-daemon
-
-      - name: Configure Keystore for Release Signing
-        run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "Using custom release keystore from secrets..."
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-upload-key.jks
-            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/my-upload-key.jks" >> $GITHUB_ENV
-            echo "STORE_PASSWORD=${{ secrets.STORE_PASSWORD }}" >> $GITHUB_ENV
-            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          if [[ "$SOURCE_BRANCH" == "main" ]]; then
+            tag="latest"
+            title="CloudBox Latest Build (${SOURCE_SHA:0:7})"
+            version_name="1.0.0-dev.${RELEASE_RUN_NUMBER}"
+            prerelease="true"
           else
-            echo "No custom keystore provided. Generating a self-signed release keystore for CI..."
-            keytool -genkeypair -v -keystore my-upload-key.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass android -keypass android -dname "CN=CloudBox, OU=Release, O=AIStudio, L=City, S=State, C=US"
-            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/my-upload-key.jks" >> $GITHUB_ENV
-            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
-            echo "KEY_ALIAS=upload" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+            tag="${SOURCE_BRANCH#refs/tags/}"
+            version_name="${tag#v}"
+            title="CloudBox ${tag}"
+            prerelease="false"
           fi
-
-      - name: Build Release APKs (Split by Architecture)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SOURCE_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
+        shell: bash
         run: |
-          ./gradlew :app:assembleRelease -PsplitApks --no-daemon --stacktrace
+          set -euo pipefail
+          has_any_secret=false
+          for value in "$KEYSTORE_BASE64" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD"; do
+            if [[ -n "$value" ]]; then has_any_secret=true; fi
+          done
 
-      - name: Organize and Rename Release APKs
-        id: organize_apks
+          if [[ "$SOURCE_BRANCH" != "main" || "$has_any_secret" == "true" ]]; then
+            for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+              if [[ -z "${!name}" ]]; then
+                echo "::error::All signing secrets are required for versioned releases (and must be configured together). Missing: $name"
+                exit 1
+              fi
+            done
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/cloudbox-release.jks"
+            {
+              echo "KEYSTORE_PATH=$RUNNER_TEMP/cloudbox-release.jks"
+              echo "STORE_PASSWORD=$STORE_PASSWORD"
+              echo "KEY_ALIAS=$KEY_ALIAS"
+              echo "KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+          else
+            echo "::warning::No persistent signing key configured. This rolling preview uses a temporary key and cannot update installs signed by another key. Configure the repository signing secrets before distributing this build broadly."
+            keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/cloudbox-preview.jks" \
+              -alias preview -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=CloudBox CI Preview, O=CloudBox, C=US"
+            {
+              echo "KEYSTORE_PATH=$RUNNER_TEMP/cloudbox-preview.jks"
+              echo "STORE_PASSWORD=android"
+              echo "KEY_ALIAS=preview"
+              echo "KEY_PASSWORD=android"
+            } >> "$GITHUB_ENV"
+          fi
+      - name: Build split release APKs
+        env:
+          APP_VERSION_NAME: ${{ steps.release.outputs.version_name }}
+          APP_VERSION_CODE: ${{ github.run_number }}
+        run: >-
+          ./gradlew --no-daemon :app:assembleRelease -PsplitApks
+          -PappVersionName="$APP_VERSION_NAME"
+          -PappVersionCode="$APP_VERSION_CODE"
+      - name: Prepare APKs and checksums
+        shell: bash
         run: |
-          mkdir -p release-artifacts
-          
-          # Find generated APKs
-          APK_DIR="app/build/outputs/apk/release"
-          echo "Listing generated APKs in $APK_DIR:"
-          ls -la "$APK_DIR"
-          
-          # Copy and rename architecture-specific APKs
-          if [ -f "$APK_DIR/app-arm64-v8a-release.apk" ]; then
-            cp "$APK_DIR/app-arm64-v8a-release.apk" "release-artifacts/CloudBox-arm64-v8a-release.apk"
-          fi
-
-          if [ -f "$APK_DIR/app-armeabi-v7a-release.apk" ]; then
-            cp "$APK_DIR/app-armeabi-v7a-release.apk" "release-artifacts/CloudBox-armeabi-v7a-release.apk"
-          fi
-
-          if [ -f "$APK_DIR/app-universal-release.apk" ]; then
-            cp "$APK_DIR/app-universal-release.apk" "release-artifacts/CloudBox-universal-release.apk"
-          elif [ -f "$APK_DIR/app-release.apk" ]; then
-            cp "$APK_DIR/app-release.apk" "release-artifacts/CloudBox-universal-release.apk"
-          fi
-
-          # Compute SHA-256 Checksums
-          cd release-artifacts
-          sha256sum *.apk > checksums-sha256.txt
-          cat checksums-sha256.txt
-          cd ..
-
-      - name: Upload Artifacts to Workflow Run
+          set -euo pipefail
+          apk_dir="app/build/outputs/apk/release"
+          artifact_dir="release-artifacts"
+          mkdir -p "$artifact_dir"
+          cp "$apk_dir/app-arm64-v8a-release.apk" "$artifact_dir/CloudBox-arm64-v8a-release.apk"
+          cp "$apk_dir/app-armeabi-v7a-release.apk" "$artifact_dir/CloudBox-armeabi-v7a-release.apk"
+          cp "$apk_dir/app-universal-release.apk" "$artifact_dir/CloudBox-universal-release.apk"
+          (
+            cd "$artifact_dir"
+            sha256sum ./*.apk > checksums-sha256.txt
+            sha256sum --check checksums-sha256.txt
+          )
+      - name: Upload release APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CloudBox-Release-APKs
+          name: cloudbox-${{ steps.release.outputs.tag }}-release-apks
           path: release-artifacts/*
-          retention-days: 14
-
-      - name: Determine Release Tag and Title
-        id: release_info
-        if: github.event_name != 'pull_request'
-        run: |
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ github.event.inputs.tag_name }}"
-            TITLE="${{ github.event.inputs.release_title }}"
-            DRAFT="${{ github.event.inputs.is_draft }}"
-            PRERELEASE="${{ github.event.inputs.is_prerelease }}"
-          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG="${{ github.ref_name }}"
-            TITLE="CloudBox $TAG"
-            DRAFT=false
-            PRERELEASE=false
-          else
-            # Automatic build from push to main/master: rolling 'latest' release
-            TAG="latest"
-            TITLE="CloudBox Latest Build ($SHORT_SHA)"
-            DRAFT=false
-            PRERELEASE=true
-          fi
-
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "title=$TITLE" >> $GITHUB_OUTPUT
-          echo "draft=$DRAFT" >> $GITHUB_OUTPUT
-          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
-
-      - name: Publish / Update GitHub Release
-        if: github.event_name != 'pull_request'
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.release_info.outputs.tag }}
-          name: ${{ steps.release_info.outputs.title }}
-          draft: ${{ steps.release_info.outputs.draft == 'true' }}
-          prerelease: ${{ steps.release_info.outputs.prerelease == 'true' }}
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: ${{ steps.release.outputs.title }}
+          prerelease: ${{ steps.release.outputs.prerelease == 'true' }}
+          draft: false
           files: release-artifacts/*
           generate_release_notes: true
           body: |
-            ## 📦 CloudBox Android Release (${{ steps.release_info.outputs.tag }})
+            ## CloudBox Android ${{ steps.release.outputs.tag }}
 
-            - **Коммит**: `${{ steps.release_info.outputs.short_sha }}`
-            - **Дата сборки**: `${{ steps.release_info.outputs.build_date }}`
+            Built from verified commit `${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}`.
 
-            ### Файлы для установки:
-            - **`CloudBox-arm64-v8a-release.apk`**: Для большинства современных 64-битных смартфонов и планшетов (рекомендуется).
-            - **`CloudBox-armeabi-v7a-release.apk`**: Для устаревших 32-битных устройств.
-            - **`CloudBox-universal-release.apk`**: Универсальный APK с поддержкой всех архитектур.
-            - **`checksums-sha256.txt`**: Контрольные суммы SHA-256 для проверки целостности файлов.
+            APKs are split for arm64-v8a and armeabi-v7a and include a universal build. Verify downloaded files with `checksums-sha256.txt`.
 
-            ---
-            *Сборка и публикация выполнены автоматически через GitHub Actions при обновлении репозитория.*
+            Versioned releases require the persistent repository signing key. Rolling `latest` builds use an ephemeral preview key only when signing secrets are not configured; such APKs are not upgrade-compatible with a differently signed installation.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Write release summary
+        if: always()
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          VERSION_NAME: ${{ steps.release.outputs.version_name }}
+        run: |
+          {
+            echo "## Android release pipeline"
+            echo "- Tag: \`${RELEASE_TAG:-not resolved}\`"
+            echo "- App version: \`${VERSION_NAME:-not resolved}\`"
+            echo "- Trigger: ${{ github.event_name }}"
+            echo "- Source run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } >> "$GITHUB_STEP_SUMMARY"

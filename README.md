@@ -144,24 +144,27 @@
 
 ### Требования
 - Android Studio Ladybug / Meerkat или IntelliJ IDEA
-- JDK 17 или 21
-- Android SDK 36 (минимальная версия: Android 8.0, API 24)
+- JDK 17
+- Android SDK 36.1 (minimum supported Android version: API 24)
 
 ### Сборка из командной строки
 
 ```bash
-# Клонирование репозитория
-git clone https://github.com/username/CloudBox.git
-cd CloudBox
+# Clone the repository
+git clone https://github.com/oustery/cloudbox-app.git
+cd cloudbox-app
 
-# Запуск локальных unit- и Robolectric-тестов
-./gradlew testDebugUnitTest
+# Run unit and Robolectric tests
+./gradlew :app:testDebugUnitTest
 
-# Сборка отладочного APK (Debug)
-./gradlew assembleDebug
+# Run Android lint
+./gradlew :app:lintDebug
 
-# Сборка релизных APK с разделением по архитектурам (ARMv8 и ARMv7)
-./gradlew assembleRelease -PsplitApks
+# Build the debug APK
+./gradlew :app:assembleDebug
+
+# Build split release APKs (requires signing configuration)
+./gradlew :app:assembleRelease -PsplitApks
 ```
 
 Сгенерированные релизные файлы будут доступны в:
@@ -174,35 +177,25 @@ app/build/outputs/apk/release/
 
 ---
 
-## 🔄 CI/CD & Релизы (GitHub Actions)
+## CI/CD and releases (GitHub Actions)
 
-В проекте настроен автоматический пайплайн сборки и публикации (`.github/workflows/release.yml`):
+The repository owns two separate workflows:
 
-- **Автоматическая компиляция при каждом коммите (Continuous Delivery)**:  
-  При каждом `git push` в ветку `main` или `master`, GitHub Actions автоматически:
-  1. Запускает проверку и прогон Unit/Robolectric тестов.
-  2. Компилирует оптимизированные Release APK под каждую архитектуру (`arm64-v8a`, `armeabi-v7a`, `universal`).
-  3. Генерирует контрольные суммы SHA-256.
-  4. Сохраняет APK как артефакты сборки (скачиваемые в разделе Actions).
-  5. Автоматически публикует/обновляет **Rolling Release** с тегом `latest` в секции **Releases**, чтобы последняя версия всегда была готова к скачиванию без ручного создания тегов!
+- `.github/workflows/ci.yml` runs on pull requests, pushes to `main`, and manual dispatch. It validates the checked-in Gradle wrapper, runs unit/Robolectric tests and Android lint, builds a debug APK, and uploads that APK as a short-lived Actions artifact. It has read-only repository permissions.
+- `.github/workflows/release.yml` publishes a rolling `latest` prerelease only after a successful CI push to `main`. A `v*` tag starts a separate release run that validates wrapper, tests, lint, and debug build before packaging. Both paths build arm64-v8a, armeabi-v7a, and universal release APKs and verify SHA-256 checksums.
 
-- **Автоматический релиз по тегу (Versioned Release)**:  
-  При создании тега версии:
-  ```bash
-  git tag v1.0.0
-  git push origin v1.0.0
-  ```
-  GitHub Actions создает официальный релиз с указанной версией, автоматическим ченджлогом и прикрепленными APK.
+A successful `main` build updates the rolling `latest` prerelease. To make a versioned release, push a semantic version tag after merging the release-ready commit:
 
-- **Проверка Pull Request (CI)**:  
-  При создании PR автоматически проверяется компилируемость проекта и успешность всех тестов.
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
 
-- **Секреты подписи (GitHub Secrets)**:
-  - `KEYSTORE_BASE64`: Закодированный в Base64 файл ключа `.jks`
-  - `STORE_PASSWORD`: Пароль хранилища
-  - `KEY_ALIAS`: Алиас ключа
-  - `KEY_PASSWORD`: Пароль ключа  
-  *(Если секреты не заданы, workflow автоматически сгенерирует временный релизный ключ, предотвращая сбой пайплайна).*
+Versioned releases require all four repository Actions secrets: `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD`. Encode the keystore as a single-line value (Linux: `base64 -w0 release.jks`) and keep a secure backup. Never commit signing keys or passwords. The Gradle release configuration uses the supplied alias and version metadata.
+
+If no signing secrets exist, the rolling `latest` preview build uses an ephemeral key so delivery remains available. APKs signed by that temporary key are not suitable for in-place updates; configure a persistent signing key before broad distribution. Versioned releases intentionally fail instead of silently using a rotating key.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for developer setup and release instructions.
 
 ---
 
