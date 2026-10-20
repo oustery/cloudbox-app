@@ -43,11 +43,14 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -61,6 +64,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CloudItem
+import com.example.data.model.CloudItemSortOrder
+import com.example.data.model.sortedBy
 import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.FileItemCard
 import com.example.ui.components.ContentStatePanel
@@ -99,6 +107,8 @@ fun FolderExplorerScreen(
     val searchQuery by viewModel.fileSearchQuery.collectAsStateWithLifecycle()
     val selectedItems by viewModel.selectedItems.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
+    val fileSortOrder by viewModel.fileSortOrder.collectAsStateWithLifecycle()
+    var isSortMenuExpanded by remember { mutableStateOf(false) }
 
     // Android predictive back handler
     BackHandler {
@@ -123,7 +133,7 @@ fun FolderExplorerScreen(
             item.name.contains(searchQuery, ignoreCase = true)
         }
         matchesFilter && matchesQuery
-    }
+    }.sortedBy(fileSortOrder)
 
     Column(
         modifier = modifier
@@ -187,6 +197,37 @@ fun FolderExplorerScreen(
                             contentDescription = "Сменить вид",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
+                    }
+
+                    Box {
+                        IconButton(
+                            onClick = { isSortMenuExpanded = true },
+                            modifier = Modifier.testTag("explorer_sort_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Sort,
+                                contentDescription = "Сортировка: ${fileSortOrder.title}",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = isSortMenuExpanded,
+                            onDismissRequest = { isSortMenuExpanded = false }
+                        ) {
+                            CloudItemSortOrder.entries.forEach { order ->
+                                DropdownMenuItem(
+                                    text = { Text(order.title) },
+                                    onClick = {
+                                        viewModel.setFileSortOrder(order)
+                                        isSortMenuExpanded = false
+                                    },
+                                    leadingIcon = if (fileSortOrder == order) {
+                                        { Icon(Icons.Default.Check, contentDescription = null) }
+                                    } else null,
+                                    modifier = Modifier.testTag("explorer_sort_${order.name}")
+                                )
+                            }
+                        }
                     }
 
                     // Refresh
@@ -416,7 +457,8 @@ fun FolderExplorerScreen(
 
                             FileItemCard(
                                 item = item,
-                                thumbnailUrl = null,
+                                thumbnailUrl = item.takeIf { it.isImage || it.isVideo }
+                                    ?.let { viewModel.getThumbnailUrl(it.weblink, 512) },
                                 isGrid = true,
                                 isSelected = isSelected,
                                 isSelectionMode = isSelectionMode,
@@ -453,7 +495,8 @@ fun FolderExplorerScreen(
 
                             FileItemCard(
                                 item = item,
-                                thumbnailUrl = null,
+                                thumbnailUrl = item.takeIf { it.isImage || it.isVideo }
+                                    ?.let { viewModel.getThumbnailUrl(it.weblink, 512) },
                                 isGrid = false,
                                 isSelected = isSelected,
                                 isSelectionMode = isSelectionMode,

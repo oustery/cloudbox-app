@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.api.CloudUrlParser
 import com.example.data.local.SavedLinkEntity
 import com.example.data.model.CloudItem
+import com.example.data.model.CloudItemSortOrder
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,6 +81,9 @@ class CloudLinkViewModel(
     private val _isGridView = MutableStateFlow(true)
     val isGridView: StateFlow<Boolean> = _isGridView.asStateFlow()
 
+    private val _fileSortOrder = MutableStateFlow(CloudItemSortOrder.DATE_NEWEST)
+    val fileSortOrder: StateFlow<CloudItemSortOrder> = _fileSortOrder.asStateFlow()
+
     private val _selectedItems = MutableStateFlow<Set<String>>(emptySet())
     val selectedItems: StateFlow<Set<String>> = _selectedItems.asStateFlow()
 
@@ -119,6 +123,10 @@ class CloudLinkViewModel(
 
     fun setGridView(isGrid: Boolean) {
         _isGridView.value = isGrid
+    }
+
+    fun setFileSortOrder(order: CloudItemSortOrder) {
+        _fileSortOrder.value = order
     }
 
     fun openMediaViewer(item: CloudItem) {

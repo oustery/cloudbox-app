@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.data.model.CloudItem
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.CyanAccent
@@ -142,6 +143,15 @@ private fun FileGridItem(
                 )
             }
 
+            if (thumbnailUrl != null && (item.isImage || item.isVideo)) {
+                AsyncImage(
+                    model = thumbnailUrl,
+                    contentDescription = "Предпросмотр: ${item.name}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
             // Bottom gradient overlay for legible text
             Box(
                 modifier = Modifier
@@ -170,7 +180,8 @@ private fun FileGridItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = item.formattedSize,
+                    text = listOfNotNull(item.formattedSize, item.formattedDuration)
+                        .joinToString(" • "),
                     color = Color.White.copy(alpha = 0.8f),
                     style = MaterialTheme.typography.labelSmall
                 )
@@ -276,6 +287,14 @@ private fun FileListItem(
                     tint = getFileIconColor(item),
                     modifier = Modifier.size(26.dp)
                 )
+                if (thumbnailUrl != null && (item.isImage || item.isVideo)) {
+                    AsyncImage(
+                        model = thumbnailUrl,
+                        contentDescription = "Предпросмотр: ${item.name}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(UiSpacing.medium))
@@ -295,6 +314,13 @@ private fun FileListItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    item.formattedDuration?.let { duration ->
+                        Text(
+                            text = " • $duration",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (item.formattedDate.isNotBlank()) {
                         Text(
                             text = " • ${item.formattedDate}",

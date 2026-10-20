@@ -15,8 +15,25 @@ data class CloudItem(
     @Json(name = "mtime") val mtime: Long = 0L,
     @Json(name = "weblink") val weblink: String = "",
     @Json(name = "count") val count: FolderCount? = null,
-    @Json(name = "tree") val tree: String? = null
+    @Json(name = "tree") val tree: String? = null,
+    @Json(name = "duration") val durationSeconds: Long? = null,
+    @Json(name = "video_duration") val videoDurationSeconds: Long? = null,
+    @Json(name = "duration_ms") val durationMilliseconds: Long? = null
 ) {
+    val mediaDurationSeconds: Long?
+        get() = durationSeconds
+            ?: videoDurationSeconds
+            ?: durationMilliseconds?.let { (it / 1000L).takeIf { seconds -> seconds > 0L } }
+
+    val formattedDuration: String?
+        get() = mediaDurationSeconds?.let { totalSeconds ->
+            val hours = totalSeconds / 3600
+            val minutes = (totalSeconds % 3600) / 60
+            val seconds = totalSeconds % 60
+            if (hours > 0) "%d:%02d:%02d".format(Locale.ROOT, hours, minutes, seconds)
+            else "%d:%02d".format(Locale.ROOT, minutes, seconds)
+        }
+
     val isFolder: Boolean
         get() = kind.equals("folder", ignoreCase = true)
 
@@ -104,6 +121,26 @@ data class CloudItem(
                 ""
             }
         }
+}
+
+enum class CloudItemSortOrder(val title: String) {
+    DATE_NEWEST("Дата: сначала новые"),
+    SIZE_LARGEST("Размер: сначала большие"),
+    DURATION_LONGEST("Длительность: сначала длинные")
+}
+
+fun List<CloudItem>.sortedBy(order: CloudItemSortOrder): List<CloudItem> = when (order) {
+    CloudItemSortOrder.DATE_NEWEST -> sortedWith(
+        compareByDescending<CloudItem> { it.mtime }.thenBy { it.name.lowercase(Locale.ROOT) }
+    )
+    CloudItemSortOrder.SIZE_LARGEST -> sortedWith(
+        compareByDescending<CloudItem> { it.size }.thenBy { it.name.lowercase(Locale.ROOT) }
+    )
+    CloudItemSortOrder.DURATION_LONGEST -> sortedWith(
+        compareBy<CloudItem> { it.mediaDurationSeconds == null }
+            .thenByDescending { it.mediaDurationSeconds ?: Long.MIN_VALUE }
+            .thenBy { it.name.lowercase(Locale.ROOT) }
+    )
 }
 
 @JsonClass(generateAdapter = true)
