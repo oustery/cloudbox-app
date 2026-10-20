@@ -51,7 +51,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.example.data.model.CloudItem
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.CyanAccent
@@ -122,34 +121,25 @@ private fun FileGridItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (item.isImage && !thumbnailUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = thumbnailUrl,
-                    contentDescription = item.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                    MaterialTheme.colorScheme.surface
-                                )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                MaterialTheme.colorScheme.surface
                             )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = getFileIcon(item),
-                        contentDescription = null,
-                        tint = getFileIconColor(item),
-                        modifier = Modifier.size(44.dp)
-                    )
-                }
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = getFileIcon(item),
+                    contentDescription = null,
+                    tint = getFileIconColor(item),
+                    modifier = Modifier.size(44.dp)
+                )
             }
 
             // Bottom gradient overlay for legible text
@@ -280,21 +270,12 @@ private fun FileListItem(
                     .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
-                if (item.isImage && !thumbnailUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = thumbnailUrl,
-                        contentDescription = item.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Icon(
-                        imageVector = getFileIcon(item),
-                        contentDescription = null,
-                        tint = getFileIconColor(item),
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
+                Icon(
+                    imageVector = getFileIcon(item),
+                    contentDescription = null,
+                    tint = getFileIconColor(item),
+                    modifier = Modifier.size(26.dp)
+                )
             }
 
             Spacer(modifier = Modifier.width(UiSpacing.medium))
