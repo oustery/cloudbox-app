@@ -412,12 +412,11 @@ fun FolderExplorerScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(filteredItems, key = { it.weblink }) { item ->
-                            val thumbUrl = if (item.isImage) viewModel.getThumbnailUrl(item.weblink, 512) else null
                             val isSelected = selectedItems.contains(item.weblink)
 
                             FileItemCard(
                                 item = item,
-                                thumbnailUrl = thumbUrl,
+                                thumbnailUrl = null,
                                 isGrid = true,
                                 isSelected = isSelected,
                                 isSelectionMode = isSelectionMode,
@@ -450,12 +449,11 @@ fun FolderExplorerScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(filteredItems, key = { it.weblink }) { item ->
-                            val thumbUrl = if (item.isImage) viewModel.getThumbnailUrl(item.weblink, 256) else null
                             val isSelected = selectedItems.contains(item.weblink)
 
                             FileItemCard(
                                 item = item,
-                                thumbnailUrl = thumbUrl,
+                                thumbnailUrl = null,
                                 isGrid = false,
                                 isSelected = isSelected,
                                 isSelectionMode = isSelectionMode,
