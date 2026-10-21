@@ -18,14 +18,24 @@ object NetworkModule {
 
     private val userAgentInterceptor = Interceptor { chain ->
         val originalRequest = chain.request()
-        val requestWithHeaders = originalRequest.newBuilder()
+        val isMediaRequest = originalRequest.url.encodedPath.contains("/weblink/")
+        val requestBuilder = originalRequest.newBuilder()
             .header("User-Agent", USER_AGENT)
-            .header("Accept", "application/json, text/plain, */*")
-            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
-            .header("Sec-Fetch-Site", "same-origin")
-            .header("Sec-Fetch-Mode", "cors")
-            .header("Sec-Fetch-Dest", "empty")
-            .build()
+            .header("Accept", if (isMediaRequest) "*/*" else "application/json, text/plain, */*")
+        if (isMediaRequest) {
+            requestBuilder
+                .header("Referer", "https://cloud.mail.ru/")
+                .removeHeader("Sec-Fetch-Site")
+                .removeHeader("Sec-Fetch-Mode")
+                .removeHeader("Sec-Fetch-Dest")
+        } else {
+            requestBuilder
+                .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+                .header("Sec-Fetch-Site", "same-origin")
+                .header("Sec-Fetch-Mode", "cors")
+                .header("Sec-Fetch-Dest", "empty")
+        }
+        val requestWithHeaders = requestBuilder.build()
         chain.proceed(requestWithHeaders)
     }
 

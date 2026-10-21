@@ -204,8 +204,8 @@ class CloudLinkViewModel(
                 }
 
                 // Auto-save to library if this is the root folder
-                val firstImage = folderResult.items.firstOrNull { it.isImage }
-                val thumbUrl = firstImage?.let { repository.getThumbnailUrl(it.weblink, 512) }
+                val firstMedia = folderResult.items.firstOrNull { it.isImage || it.isVideo }
+                val thumbUrl = firstMedia?.let { repository.getThumbnailUrl(it.weblink, 512) }
                 repository.saveLink(
                     url = CloudUrlParser.toFullPublicUrl(folderResult.weblinkKey),
                     title = folderResult.name,
