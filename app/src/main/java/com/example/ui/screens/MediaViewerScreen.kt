@@ -4,9 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
-import android.net.Uri
-import android.widget.MediaController
-import android.widget.VideoView
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -79,8 +76,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.data.api.CloudUrlParser
+import com.example.data.media.CloudMediaCache
 import com.example.data.model.CloudItem
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.viewmodel.DownloadViewModel
@@ -444,10 +450,15 @@ private fun ZoomableImageContent(
     var offsetY by remember(item.weblink) { mutableFloatStateOf(0f) }
     var isLoadingImage by remember(item.weblink) { mutableStateOf(true) }
     var imageError by remember(item.weblink) { mutableStateOf(false) }
+    var useOriginalImage by remember(item.weblink) { mutableStateOf(false) }
     var retryAttempt by remember(item.weblink) { mutableIntStateOf(0) }
 
-    // Use high-resolution 1024 thumb or direct download link for max fidelity
-    val imageUrl = viewModel.getThumbnailUrl(item.weblink, 1024)
+    // Prefer the fast thumbnail; fall back to the original when the thumbnail endpoint fails.
+    val imageUrl = if (useOriginalImage) {
+        viewModel.getDownloadUrl(item.weblink)
+    } else {
+        viewModel.getThumbnailUrl(item.weblink, 1024)
+    }
 
     Box(
         modifier = Modifier
@@ -495,8 +506,13 @@ private fun ZoomableImageContent(
                         imageError = false
                     },
                     onError = {
-                        isLoadingImage = false
-                        imageError = true
+                        if (!useOriginalImage) {
+                            useOriginalImage = true
+                            isLoadingImage = true
+                        } else {
+                            isLoadingImage = false
+                            imageError = true
+                        }
                     },
                     modifier = Modifier
                         .fillMaxSize()
@@ -529,6 +545,7 @@ private fun ZoomableImageContent(
                     onClick = {
                         imageError = false
                         isLoadingImage = true
+                        useOriginalImage = false
                         retryAttempt++
                     }
                 ) {
@@ -574,16 +591,69 @@ private fun ZoomableImageContent(
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun VideoPlayerContent(
     item: CloudItem,
     viewModel: CloudLinkViewModel,
     onTap: () -> Unit
 ) {
+    val applicationContext = LocalContext.current.applicationContext
     val streamingUrl = viewModel.getStreamingUrl(item.weblink)
-    var isBuffering by remember(item.weblink) { mutableStateOf(true) }
-    var videoError by remember(item.weblink) { mutableStateOf(false) }
     var retryAttempt by remember(item.weblink) { mutableIntStateOf(0) }
+    var isBuffering by remember(item.weblink, retryAttempt) { mutableStateOf(true) }
+    var videoError by remember(item.weblink, retryAttempt) { mutableStateOf(false) }
+    var triedDirectFallback by remember(item.weblink, retryAttempt) { mutableStateOf(false) }
+
+    val mediaSourceFactory = remember(applicationContext) {
+        DefaultMediaSourceFactory(applicationContext)
+            .setDataSourceFactory(CloudMediaCache.dataSourceFactory(applicationContext))
+    }
+    val loadControl = remember {
+        DefaultLoadControl.Builder()
+            .setBufferDurationsMs(5_000, 60_000, 750, 1_500)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+    }
+    val exoPlayer = remember(item.weblink, retryAttempt) {
+        ExoPlayer.Builder(applicationContext)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(loadControl)
+            .build()
+            .apply { repeatMode = Player.REPEAT_MODE_ONE }
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose { exoPlayer.release() }
+    }
+
+    DisposableEffect(exoPlayer, streamingUrl, triedDirectFallback) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                isBuffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
+                if (playbackState == Player.STATE_READY) videoError = false
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                if (!triedDirectFallback) {
+                    triedDirectFallback = true
+                    isBuffering = true
+                } else {
+                    isBuffering = false
+                    videoError = true
+                }
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose { exoPlayer.removeListener(listener) }
+    }
+
+    LaunchedEffect(exoPlayer, streamingUrl, triedDirectFallback) {
+        val url = if (triedDirectFallback) viewModel.getDownloadUrl(item.weblink) else streamingUrl
+        exoPlayer.setMediaItem(MediaItem.fromUri(url))
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = true
+    }
 
     Box(
         modifier = Modifier
@@ -593,40 +663,19 @@ private fun VideoPlayerContent(
             },
         contentAlignment = Alignment.Center
     ) {
-        if (!videoError) {
-            key(item.weblink, retryAttempt) {
-                AndroidView(
-                    factory = { ctx ->
-                        VideoView(ctx).apply {
-                            var triedDirectFallback = false
-                            val mediaController = MediaController(ctx)
-                            mediaController.setAnchorView(this)
-                            setMediaController(mediaController)
-                            setOnPreparedListener { mp ->
-                                isBuffering = false
-                                mp.isLooping = true
-                                start()
-                            }
-                            setOnErrorListener { _, _, _ ->
-                                if (!triedDirectFallback) {
-                                    triedDirectFallback = true
-                                    isBuffering = true
-                                    val directUrl = viewModel.getDownloadUrl(item.weblink)
-                                    setVideoURI(Uri.parse(directUrl))
-                                    start()
-                                } else {
-                                    isBuffering = false
-                                    videoError = true
-                                }
-                                true
-                            }
-                            setVideoURI(Uri.parse(streamingUrl))
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
+        AndroidView(
+            factory = { playerViewContext ->
+                PlayerView(playerViewContext).apply {
+                    player = exoPlayer
+                    useController = true
+                    controllerAutoShow = true
+                    keepScreenOn = true
+                    setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                }
+            },
+            update = { it.player = exoPlayer },
+            modifier = Modifier.fillMaxSize()
+        )
 
         if (isBuffering && !videoError) {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -647,6 +696,7 @@ private fun VideoPlayerContent(
                     onClick = {
                         videoError = false
                         isBuffering = true
+                        triedDirectFallback = false
                         retryAttempt++
                     }
                 ) {

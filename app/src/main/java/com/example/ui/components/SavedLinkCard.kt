@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.data.local.SavedLinkEntity
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.UiSpacing
@@ -85,6 +86,14 @@ fun SavedLinkCard(
                     tint = CloudBlue,
                     modifier = Modifier.size(32.dp)
                 )
+                link.previewThumbnailUrl?.takeIf { it.isNotBlank() }?.let { thumbnailUrl ->
+                    AsyncImage(
+                        model = thumbnailUrl,
+                        contentDescription = "Предпросмотр: ${link.title}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(UiSpacing.medium))
