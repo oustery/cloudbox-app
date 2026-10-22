@@ -332,7 +332,8 @@ class DownloadRepository private constructor(
             cloudBoxDir
         } else {
             // App-specific external downloads directory as fallback
-            val fallback = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
+            val fallback = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                ?: appContext.filesDir
             fallback.mkdirs()
             fallback
         }

@@ -89,6 +89,7 @@ import com.example.data.local.AppDatabase
 import com.example.data.preferences.AppSettings
 import com.example.data.preferences.AppSettingsViewModel
 import com.example.data.preferences.AppThemeMode
+import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.DownloadRepository
 import com.example.ui.screens.DownloadsScreen
 import com.example.ui.screens.FolderExplorerScreen
