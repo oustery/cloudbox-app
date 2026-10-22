@@ -9,6 +9,7 @@ import android.net.Uri
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.annotation.OptIn as AndroidXOptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -105,6 +106,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.database.StandaloneDatabaseProvider
@@ -140,6 +142,7 @@ private val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
  * stored here so that seek-backs, replays and re-opened videos start instantly
  * instead of re-fetching megabytes over the high-latency public endpoints.
  */
+@AndroidXOptIn(UnstableApi::class)
 object PlayerMediaCache {
     private const val MAX_CACHE_BYTES = 256L * 1024 * 1024
 
@@ -471,6 +474,7 @@ private fun MediaViewerTopBar(
  *  - Media3 ships an AVI extractor, which restores playback for the numerous
  *    .avi files that the platform MediaPlayer cannot even demux.
  */
+@AndroidXOptIn(UnstableApi::class)
 @Composable
 private fun VideoPlayerContent(
     item: CloudItem,
