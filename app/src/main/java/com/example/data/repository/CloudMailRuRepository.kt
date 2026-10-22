@@ -11,7 +11,26 @@ import com.example.data.model.FolderResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.net.URLEncoder
 import java.util.regex.Pattern
+
+/**
+ * Size presets for the Mail.ru public-link thumbnail generator.
+ *
+ * The thumb shard accepts named quality tokens, not arbitrary pixel sizes:
+ * https://thumb.cloud.mail.ru/weblink/thumb/{token}/{encoded_weblink_path}
+ *
+ * Confirmed against the live shard (October 2026):
+ *  - xw0   -> high-resolution preview (long side ~1200 px) for images & videos
+ *  - xw1   -> high-resolution preview, alternate crop
+ *  - vw0   -> small preview (160x120), cheap for lists
+ *  - vxw0  -> video poster frame (640x360)
+ */
+enum class ThumbnailSize(val token: String) {
+    SMALL("vw0"),
+    HIGH_RES("xw0"),
+    VIDEO_POSTER("vxw0");
+}
 
 class CloudMailRuRepository(
     private val api: CloudMailRuApi = NetworkModule.api,
@@ -19,10 +38,15 @@ class CloudMailRuRepository(
 ) {
     companion object {
         private const val TAG = "CloudMailRuRepo"
-        // Reliable fallback shards for Mail.ru Cloud
-        private const val DEFAULT_DOWNLOAD_SHARD = "https://cloclo25.cloud.mail.ru/weblink/get/"
+        // Reliable fallback shards for Mail.ru Cloud.
+        // NOTE: the legacy /weblink/get/ endpoint was decommissioned server-side
+        // (it returns nginx 404 on every clocloXX host). Both downloads and
+        // playback now go through /weblink/view/, which is the only live weblink
+        // content endpoint: it follows a signed 301 redirect, answers 206 with
+        // "Accept-Ranges: bytes" and streams the file body.
+        private const val DEFAULT_DOWNLOAD_SHARD = "https://cloclo60.cloud.mail.ru/weblink/view/"
         private const val DEFAULT_THUMB_SHARD = "https://thumb.cloud.mail.ru/weblink/thumb/"
-        private const val DEFAULT_VIEW_SHARD = "https://cloclo25.cloud.mail.ru/weblink/view/"
+        private const val DEFAULT_VIEW_SHARD = "https://cloclo60.cloud.mail.ru/weblink/view/"
     }
 
     private var cachedDownloadShard: String? = null
@@ -103,27 +127,49 @@ class CloudMailRuRepository(
 
     /**
      * Constructs a direct download URL for a cloud item.
+     *
+     * Uses the live /weblink/view/ endpoint (the old /weblink/get/ shard no
+     * longer exists). OkHttp follows the signed 301 redirect transparently and
+     * Range headers are honored, so resume/pause keeps working.
      */
     fun getDownloadUrl(weblink: String): String {
-        val cleanWeblink = weblink.trim('/')
+        val cleanWeblink = encodeWeblinkPath(weblink)
         return "${getDownloadShard()}$cleanWeblink"
     }
 
     /**
-     * Constructs a streaming URL for video / audio.
+     * Constructs a streaming URL for video / audio playback.
      */
     fun getStreamingUrl(weblink: String): String {
-        val cleanWeblink = weblink.trim('/')
+        val cleanWeblink = encodeWeblinkPath(weblink)
         return "${getViewShard()}$cleanWeblink"
     }
 
     /**
-     * Constructs a thumbnail image URL for an image file.
-     * @param size size in pixels (e.g. 256, 512, 1024)
+     * Constructs a thumbnail image URL for an image or video file.
+     *
+     * The public thumb shard validates the size segment strictly: numeric sizes
+     * such as "512" are rejected with HTTP 400 ("unknown size"). Only named
+     * tokens (see [ThumbnailSize]) are accepted, and the weblink path must be
+     * percent-encoded because it frequently contains '@', spaces, parentheses
+     * and Cyrillic characters.
      */
-    fun getThumbnailUrl(weblink: String, size: Int = 512): String {
-        val cleanWeblink = weblink.trim('/')
-        return "${getThumbShard()}$size/$cleanWeblink"
+    fun getThumbnailUrl(weblink: String, size: ThumbnailSize = ThumbnailSize.HIGH_RES): String {
+        val cleanWeblink = encodeWeblinkPath(weblink)
+        return "${getThumbShard()}${size.token}/$cleanWeblink"
+    }
+
+    /**
+     * Percent-encodes every path segment of a weblink so the resulting URL is
+     * safe for OkHttp / Coil. URLEncoder targets form encoding ('+' for space),
+     * therefore '+' is converted back to '%20' for path semantics.
+     */
+    private fun encodeWeblinkPath(weblink: String): String {
+        return weblink.trim('/').split('/')
+            .filter { it.isNotEmpty() }
+            .joinToString("/") { segment ->
+                URLEncoder.encode(segment, Charsets.UTF_8.name()).replace("+", "%20")
+            }
     }
 
     /**

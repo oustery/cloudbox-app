@@ -9,6 +9,7 @@ import com.example.data.model.CloudItem
 import com.example.data.model.CloudItemSortOrder
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
+import com.example.data.repository.ThumbnailSize
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -96,6 +97,9 @@ class CloudLinkViewModel(
     // Currently opened media in viewer
     private val _activeMediaItem = MutableStateFlow<CloudItem?>(null)
     val activeMediaItem: StateFlow<CloudItem?> = _activeMediaItem.asStateFlow()
+
+    /** Last playback position per video weblink, used to resume where the user left off. */
+    private val videoResumePositions = mutableMapOf<String, Long>()
 
     init {
         // Pre-warm dispatcher shards
@@ -205,7 +209,7 @@ class CloudLinkViewModel(
 
                 // Auto-save to library if this is the root folder
                 val firstImage = folderResult.items.firstOrNull { it.isImage }
-                val thumbUrl = firstImage?.let { repository.getThumbnailUrl(it.weblink, 512) }
+                val thumbUrl = firstImage?.let { repository.getThumbnailUrl(it.weblink, ThumbnailSize.HIGH_RES) }
                 repository.saveLink(
                     url = CloudUrlParser.toFullPublicUrl(folderResult.weblinkKey),
                     title = folderResult.name,
@@ -281,8 +285,19 @@ class CloudLinkViewModel(
     }
 
     fun getDownloadUrl(weblink: String): String = repository.getDownloadUrl(weblink)
-    fun getThumbnailUrl(weblink: String, size: Int = 512): String = repository.getThumbnailUrl(weblink, size)
+    fun getThumbnailUrl(weblink: String, size: ThumbnailSize = ThumbnailSize.HIGH_RES): String =
+        repository.getThumbnailUrl(weblink, size)
     fun getStreamingUrl(weblink: String): String = repository.getStreamingUrl(weblink)
+
+    fun rememberVideoPosition(weblink: String, positionMs: Long) {
+        if (positionMs > 0) videoResumePositions[weblink] = positionMs
+    }
+
+    fun clearVideoPosition(weblink: String) {
+        videoResumePositions.remove(weblink)
+    }
+
+    fun getVideoResumePosition(weblink: String): Long = videoResumePositions[weblink] ?: 0L
 }
 
 class CloudLinkViewModelFactory(
