@@ -1,7 +1,11 @@
 package com.example
 
 import android.Manifest
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -83,6 +87,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.api.CloudUrlParser
 import com.example.data.local.AppDatabase
@@ -91,6 +96,7 @@ import com.example.data.preferences.AppSettingsViewModel
 import com.example.data.preferences.AppThemeMode
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.DownloadRepository
+import com.example.data.update.AppUpdateManager
 import com.example.ui.screens.DownloadsScreen
 import com.example.ui.screens.FolderExplorerScreen
 import com.example.ui.screens.HomeScreen
@@ -122,6 +128,14 @@ class MainActivity : ComponentActivity() {
             // Denied: downloads keep working, the progress notification is simply hidden.
         }
 
+    /** Delivers DownloadManager completions to the in-app updater. */
+    private val updateDownloadReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            AppUpdateManager.onDownloadCompleted(applicationContext, downloadId)
+        }
+    }
+
     private val cloudViewModel: CloudLinkViewModel by viewModels {
         val db = AppDatabase.getDatabase(applicationContext)
         val repo = CloudMailRuRepository(savedLinkDao = db.savedLinkDao())
@@ -140,6 +154,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         requestNotificationPermissionIfNeeded()
+
+        ContextCompat.registerReceiver(
+            this,
+            updateDownloadReceiver,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         // Handle shared link if launched via Intent.ACTION_SEND
         handleIncomingIntent(intent)
@@ -184,6 +205,11 @@ class MainActivity : ComponentActivity() {
                 cloudViewModel.loadFolder(weblink)
             }
         }
+    }
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(updateDownloadReceiver) }
+        super.onDestroy()
     }
 
     private fun requestNotificationPermissionIfNeeded() {

@@ -2,6 +2,11 @@ package com.example.ui.screens
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,10 +52,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.api.CloudUrlParser
+import com.example.data.update.AppUpdateManager
+import com.example.data.update.UpdateUiState
 import com.example.ui.components.SavedLinkCard
 import com.example.ui.components.LinkIntakeCard
 import com.example.ui.components.ContentStatePanel
 import com.example.ui.components.AdaptiveChipGroup
+import com.example.ui.components.UpdateBanner
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.theme.UiSpacing
 
@@ -68,6 +77,12 @@ fun HomeScreen(
     val folderError by viewModel.folderError.collectAsStateWithLifecycle()
 
     var inputError by remember { mutableStateOf<String?>(null) }
+
+    // In-app update check (rolling GitHub release); runs once per process.
+    val updateState by AppUpdateManager.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        AppUpdateManager.checkForUpdate(context)
+    }
 
     fun submitLink() {
         val candidate = inputUrl.trim()
@@ -116,6 +131,27 @@ fun HomeScreen(
             errorMessage = inputError ?: folderError
         )
         Spacer(modifier = Modifier.height(UiSpacing.large))
+
+        AnimatedVisibility(
+            visible = updateState is UpdateUiState.Available ||
+                updateState is UpdateUiState.Downloading ||
+                updateState is UpdateUiState.ReadyToInstall,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            UpdateBanner(
+                state = updateState,
+                onDownload = {
+                    (updateState as? UpdateUiState.Available)?.let { available ->
+                        AppUpdateManager.startDownload(context, available.info)
+                    }
+                },
+                onInstall = { AppUpdateManager.tryInstall(context) },
+                onOpenRelease = { AppUpdateManager.openReleasePage(context) },
+                onDismiss = { AppUpdateManager.hide() }
+            )
+            Spacer(modifier = Modifier.height(UiSpacing.large))
+        }
 
         // Search in saved links if list has items
         if (savedLinks.isNotEmpty() || searchQuery.isNotBlank()) {
