@@ -1,3 +1,21 @@
 <resources>
     <string name="app_name">CloudBox</string>
+
+    <!-- Download foreground service notifications -->
+    <string name="notification_channel_downloads">Загрузки</string>
+    <string name="notification_channel_downloads_desc">Прогресс скачивания файлов из облака</string>
+    <string name="notification_idle_title">Загрузка файлов</string>
+    <string name="notification_progress_starting">Подготавливаем загрузку…</string>
+    <string name="notification_progress_title_multi">Загрузка файлов: %1$d</string>
+    <string name="notification_progress_text">%1$d%% • %2$s</string>
+    <string name="notification_progress_text_unknown">Скачивание… • %1$s</string>
+    <string name="notification_speed_unknown">расчёт скорости…</string>
+    <string name="notification_action_pause">Пауза</string>
+    <string name="notification_action_cancel">Отмена</string>
+    <string name="notification_summary_title">Загрузки завершены</string>
+    <string name="notification_summary_title_failed">Загрузка не удалась</string>
+    <string name="notification_summary_completed">Файлов скачано: %1$d</string>
+    <string name="notification_summary_failed">с ошибками: %1$d</string>
+    <string name="notification_timeout_title">Загрузка приостановлена</string>
+    <string name="notification_timeout_text">Система ограничила фоновую загрузку. Файлы сохранены — возобновите из менеджера загрузок.</string>
 </resources>

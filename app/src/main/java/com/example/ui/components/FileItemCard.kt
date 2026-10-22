@@ -52,7 +52,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.CloudItem
 import com.example.ui.theme.CloudBlue
@@ -146,14 +146,20 @@ private fun FileGridItem(
             }
 
             if (thumbnailUrl != null && (item.isImage || item.isVideo)) {
-                AsyncImage(
+                SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(thumbnailUrl)
                         .crossfade(220)
                         .build(),
                     contentDescription = "Предпросмотр: ${item.name}",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    // Shimmer while the preview is downloading; on error the
+                    // type icon underneath stays visible as the fallback.
+                    loading = {
+                        Box(modifier = Modifier.fillMaxSize().shimmerPlaceholder())
+                    },
+                    error = {}
                 )
             }
 
@@ -293,14 +299,18 @@ private fun FileListItem(
                     modifier = Modifier.size(26.dp)
                 )
                 if (thumbnailUrl != null && (item.isImage || item.isVideo)) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(thumbnailUrl)
                             .crossfade(180)
                             .build(),
                         contentDescription = "Предпросмотр: ${item.name}",
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        loading = {
+                            Box(modifier = Modifier.fillMaxSize().shimmerPlaceholder())
+                        },
+                        error = {}
                     )
                 }
             }

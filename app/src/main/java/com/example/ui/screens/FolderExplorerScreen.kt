@@ -62,6 +62,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,11 +87,13 @@ import com.example.data.repository.ThumbnailSize
 import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.FileItemCard
 import com.example.ui.components.ContentStatePanel
+import com.example.ui.components.FolderSkeletonPlaceholder
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.viewmodel.DownloadViewModel
 import com.example.ui.theme.UiMotionTokens
 import com.example.ui.theme.UiSpacing
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderExplorerScreen(
     viewModel: CloudLinkViewModel,
@@ -404,12 +408,15 @@ fun FolderExplorerScreen(
                 .fillMaxWidth()
                 .weight(1f)
         ) {
+            val isInitialLoad = isLoading && currentFolder == null
+            val isRefreshing = isLoading && currentFolder != null
+
             when {
-                isLoading -> {
-                    ContentStatePanel(
-                        title = "Загружаем файлы",
-                        message = "Получаем содержимое папки из облака.",
-                        isLoading = true,
+                isInitialLoad -> {
+                    // Skeleton placeholders instead of a dead spinner: the
+                    // layout is visible before the first byte arrives.
+                    FolderSkeletonPlaceholder(
+                        isGrid = isGridView,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -445,83 +452,93 @@ fun FolderExplorerScreen(
                     )
                 }
 
-                isGridView -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 140.dp),
-                        contentPadding = PaddingValues(UiSpacing.large),
-                        horizontalArrangement = Arrangement.spacedBy(UiSpacing.medium),
-                        verticalArrangement = Arrangement.spacedBy(UiSpacing.medium),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(filteredItems, key = { it.weblink }) { item ->
-                            val isSelected = selectedItems.contains(item.weblink)
-
-                            FileItemCard(
-                                item = item,
-                                thumbnailUrl = when {
-                                    item.isImage -> viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.HIGH_RES)
-                                    item.isVideo -> viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.VIDEO_POSTER)
-                                    else -> null
-                                },
-                                isGrid = true,
-                                isSelected = isSelected,
-                                isSelectionMode = isSelectionMode,
-                                onClick = {
-                                    if (isSelectionMode) {
-                                        viewModel.toggleItemSelection(item.weblink)
-                                    } else if (item.isFolder) {
-                                        viewModel.loadFolder(item.weblink, resetStack = false)
-                                    } else if (item.isImage || item.isVideo) {
-                                        viewModel.openMediaViewer(item)
-                                    } else {
-                                        downloadViewModel.downloadItem(item)
-                                    }
-                                },
-                                onLongClick = {
-                                    viewModel.toggleItemSelection(item.weblink)
-                                },
-                                onDownloadClick = {
-                                    downloadViewModel.downloadItem(item)
-                                }
-                            )
-                        }
-                    }
-                }
-
                 else -> {
-                    LazyColumn(
-                        contentPadding = PaddingValues(UiSpacing.large),
-                        verticalArrangement = Arrangement.spacedBy(UiSpacing.small),
+                    PullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        onRefresh = {
+                            currentFolder?.weblinkKey?.let {
+                                viewModel.loadFolder(it, resetStack = false)
+                            }
+                        },
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(filteredItems, key = { it.weblink }) { item ->
-                            val isSelected = selectedItems.contains(item.weblink)
+                        if (isGridView) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 140.dp),
+                                contentPadding = PaddingValues(UiSpacing.large),
+                                horizontalArrangement = Arrangement.spacedBy(UiSpacing.medium),
+                                verticalArrangement = Arrangement.spacedBy(UiSpacing.medium),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(filteredItems, key = { it.weblink }) { item ->
+                                    val isSelected = selectedItems.contains(item.weblink)
 
-                            FileItemCard(
-                                item = item,
-                                thumbnailUrl = item.takeIf { it.isImage || it.isVideo }
-                                    ?.let { viewModel.getThumbnailUrl(it.weblink, ThumbnailSize.SMALL) },
-                                isGrid = false,
-                                isSelected = isSelected,
-                                isSelectionMode = isSelectionMode,
-                                onClick = {
-                                    if (isSelectionMode) {
-                                        viewModel.toggleItemSelection(item.weblink)
-                                    } else if (item.isFolder) {
-                                        viewModel.loadFolder(item.weblink, resetStack = false)
-                                    } else if (item.isImage || item.isVideo) {
-                                        viewModel.openMediaViewer(item)
-                                    } else {
-                                        downloadViewModel.downloadItem(item)
-                                    }
-                                },
-                                onLongClick = {
-                                    viewModel.toggleItemSelection(item.weblink)
-                                },
-                                onDownloadClick = {
-                                    downloadViewModel.downloadItem(item)
+                                    FileItemCard(
+                                        item = item,
+                                        thumbnailUrl = when {
+                                            item.isImage -> viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.HIGH_RES)
+                                            item.isVideo -> viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.VIDEO_POSTER)
+                                            else -> null
+                                        },
+                                        isGrid = true,
+                                        isSelected = isSelected,
+                                        isSelectionMode = isSelectionMode,
+                                        onClick = {
+                                            if (isSelectionMode) {
+                                                viewModel.toggleItemSelection(item.weblink)
+                                            } else if (item.isFolder) {
+                                                viewModel.loadFolder(item.weblink, resetStack = false)
+                                            } else if (item.isImage || item.isVideo) {
+                                                viewModel.openMediaViewer(item)
+                                            } else {
+                                                downloadViewModel.downloadItem(item)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            viewModel.toggleItemSelection(item.weblink)
+                                        },
+                                        onDownloadClick = {
+                                            downloadViewModel.downloadItem(item)
+                                        }
+                                    )
                                 }
-                            )
+                            }
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(UiSpacing.large),
+                                verticalArrangement = Arrangement.spacedBy(UiSpacing.small),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(filteredItems, key = { it.weblink }) { item ->
+                                    val isSelected = selectedItems.contains(item.weblink)
+
+                                    FileItemCard(
+                                        item = item,
+                                        thumbnailUrl = item.takeIf { it.isImage || it.isVideo }
+                                            ?.let { viewModel.getThumbnailUrl(it.weblink, ThumbnailSize.SMALL) },
+                                        isGrid = false,
+                                        isSelected = isSelected,
+                                        isSelectionMode = isSelectionMode,
+                                        onClick = {
+                                            if (isSelectionMode) {
+                                                viewModel.toggleItemSelection(item.weblink)
+                                            } else if (item.isFolder) {
+                                                viewModel.loadFolder(item.weblink, resetStack = false)
+                                            } else if (item.isImage || item.isVideo) {
+                                                viewModel.openMediaViewer(item)
+                                            } else {
+                                                downloadViewModel.downloadItem(item)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            viewModel.toggleItemSelection(item.weblink)
+                                        },
+                                        onDownloadClick = {
+                                            downloadViewModel.downloadItem(item)
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
