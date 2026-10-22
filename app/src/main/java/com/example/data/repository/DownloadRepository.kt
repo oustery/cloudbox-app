@@ -4,10 +4,12 @@ import android.content.Context
 import android.os.Environment
 import android.util.Log
 import com.example.data.api.NetworkModule
+import com.example.data.local.AppDatabase
 import com.example.data.local.DownloadDao
 import com.example.data.local.DownloadStatus
 import com.example.data.local.DownloadTaskEntity
 import com.example.data.model.CloudItem
+import com.example.service.DownloadService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import kotlin.coroutines.coroutineContext
@@ -26,8 +29,8 @@ import java.io.InputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-class DownloadRepository(
-    private val context: Context,
+class DownloadRepository private constructor(
+    context: Context,
     private val downloadDao: DownloadDao,
     private val cloudRepository: CloudMailRuRepository
 ) {
@@ -36,13 +39,61 @@ class DownloadRepository(
         private const val BUFFER_SIZE = 64 * 1024 // 64 KB
         private const val MAX_ATTEMPTS = 3
         private const val RETRY_DELAY_MS = 1500L
+
+        /** Parallel transfers cap: keeps weak mobile networks usable during batch downloads. */
+        private const val MAX_PARALLEL_DOWNLOADS = 4
+
+        @Volatile
+        private var instance: DownloadRepository? = null
+
+        /**
+         * Process-wide instance. The foreground [DownloadService] and the UI must
+         * observe and control the SAME set of active jobs, so the repository is
+         * shared instead of being constructed per-ViewModel.
+         */
+        fun getInstance(context: Context): DownloadRepository {
+            val appContext = context.applicationContext
+            return instance ?: synchronized(this) {
+                instance ?: DownloadRepository(
+                    context = appContext,
+                    downloadDao = AppDatabase.getDatabase(appContext).downloadDao(),
+                    cloudRepository = CloudMailRuRepository(
+                        savedLinkDao = AppDatabase.getDatabase(appContext).savedLinkDao()
+                    )
+                ).also { instance = it }
+            }
+        }
     }
 
+    private val appContext: Context = context.applicationContext
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val activeJobs = ConcurrentHashMap<String, Job>()
+    private val downloadSlots = Semaphore(MAX_PARALLEL_DOWNLOADS)
+
+    init {
+        // Jobs live in this process only: anything still marked DOWNLOADING/QUEUED
+        // in the database is a leftover from a previous run (e.g. process death).
+        // Surface it as PAUSED so the user can resume instead of hitting a dead end.
+        repositoryScope.launch {
+            runCatching { downloadDao.getActiveTasksOnce() }.onSuccess { tasks ->
+                tasks.forEach { stale ->
+                    downloadDao.updateProgress(
+                        stale.id,
+                        stale.downloadedBytes,
+                        0L,
+                        DownloadStatus.PAUSED.name
+                    )
+                }
+            }
+        }
+    }
 
     val allDownloads: Flow<List<DownloadTaskEntity>> = downloadDao.getAllTasks()
     val activeDownloads: Flow<List<DownloadTaskEntity>> = downloadDao.getActiveTasks()
+
+    /** One-shot view of the active queue; used by the service before tearing down. */
+    suspend fun activeDownloadsSnapshot(): List<DownloadTaskEntity> =
+        downloadDao.getActiveTasksOnce()
 
     fun enqueueDownload(item: CloudItem, customName: String? = null) {
         val fileName = sanitizeFileName(customName ?: item.name)
@@ -63,6 +114,7 @@ class DownloadRepository(
         repositoryScope.launch {
             downloadDao.insertTask(task)
             startTask(taskId, downloadUrl, fileName, item.size)
+            DownloadService.start(appContext)
         }
     }
 
@@ -75,29 +127,42 @@ class DownloadRepository(
     }
 
     fun pauseDownload(id: String) {
-        activeJobs[id]?.cancel()
-        activeJobs.remove(id)
+        activeJobs.remove(id)?.cancel()
         repositoryScope.launch {
             val task = downloadDao.getTaskById(id)
-            if (task != null && task.status == DownloadStatus.DOWNLOADING.name) {
+            if (task != null && (task.status == DownloadStatus.DOWNLOADING.name || task.status == DownloadStatus.QUEUED.name)) {
                 downloadDao.updateProgress(id, task.downloadedBytes, 0L, DownloadStatus.PAUSED.name)
             }
         }
     }
 
+    /** Pauses every active or queued transfer; used by the notification action. */
+    fun pauseAll() {
+        val ids = activeJobs.keys.toList()
+        if (ids.isEmpty()) return
+        ids.forEach { pauseDownload(it) }
+    }
+
     fun resumeDownload(id: String) {
         repositoryScope.launch {
             val task = downloadDao.getTaskById(id) ?: return@launch
+            if (task.status == DownloadStatus.DOWNLOADING.name || task.status == DownloadStatus.QUEUED.name) return@launch
             startTask(id, task.downloadUrl, task.fileName, task.fileSize, task.downloadedBytes)
+            DownloadService.start(appContext)
         }
     }
 
     fun cancelDownload(id: String) {
-        activeJobs[id]?.cancel()
-        activeJobs.remove(id)
+        activeJobs.remove(id)?.cancel()
         repositoryScope.launch {
             downloadDao.deleteById(id)
         }
+    }
+
+    /** Cancels every active/queued transfer and drops them from the queue. */
+    fun cancelAll() {
+        val ids = activeJobs.keys.toList()
+        ids.forEach { cancelDownload(it) }
     }
 
     fun clearCompleted() {
@@ -117,44 +182,52 @@ class DownloadRepository(
         activeJobs[taskId]?.cancel()
 
         val job = repositoryScope.launch {
-            downloadDao.updateProgress(taskId, startByte, 0L, DownloadStatus.DOWNLOADING.name)
+            downloadDao.updateProgress(taskId, startByte, 0L, DownloadStatus.QUEUED.name)
 
-            val targetDir = getDownloadsDirectory()
-            val targetFile = File(targetDir, fileName)
+            // Bound concurrency: batch downloads must not saturate the radio.
+            downloadSlots.acquire()
+            try {
+                downloadDao.updateProgress(taskId, startByte, 0L, DownloadStatus.DOWNLOADING.name)
 
-            var attempt = 0
-            var resumeFrom = startByte
+                val targetDir = getDownloadsDirectory()
+                val targetFile = File(targetDir, fileName)
 
-            while (attempt < MAX_ATTEMPTS) {
-                attempt++
-                try {
-                    runDownloadAttempt(taskId, url, targetFile, expectedSize, resumeFrom)
-                    return@launch // completed successfully
-                } catch (e: CancellationException) {
-                    Log.d(TAG, "Download cancelled/paused: $taskId")
-                    throw e
-                } catch (e: Exception) {
-                    // Persist whatever bytes we already got so the next attempt
-                    // resumes instead of restarting the multi-hundred-MB file.
-                    resumeFrom = targetFile.length().coerceAtLeast(0L)
-                    if (attempt >= MAX_ATTEMPTS) {
-                        Log.e(TAG, "Download failed after $attempt attempts: ${e.message}", e)
-                        downloadDao.setFailed(
-                            taskId,
-                            DownloadStatus.FAILED.name,
-                            e.localizedMessage ?: "Ошибка скачивания"
-                        )
-                    } else {
-                        Log.w(TAG, "Attempt $attempt failed for $taskId (${e.message}); retrying from $resumeFrom")
-                        downloadDao.updateProgress(
-                            taskId,
-                            resumeFrom,
-                            0L,
-                            DownloadStatus.DOWNLOADING.name
-                        )
-                        delay(RETRY_DELAY_MS * attempt)
+                var attempt = 0
+                var resumeFrom = startByte
+
+                while (attempt < MAX_ATTEMPTS) {
+                    attempt++
+                    try {
+                        runDownloadAttempt(taskId, url, targetFile, expectedSize, resumeFrom)
+                        return@launch // completed successfully
+                    } catch (e: CancellationException) {
+                        Log.d(TAG, "Download cancelled/paused: $taskId")
+                        throw e
+                    } catch (e: Exception) {
+                        // Persist whatever bytes we already got so the next attempt
+                        // resumes instead of restarting the multi-hundred-MB file.
+                        resumeFrom = targetFile.length().coerceAtLeast(0L)
+                        if (attempt >= MAX_ATTEMPTS) {
+                            Log.e(TAG, "Download failed after $attempt attempts: ${e.message}", e)
+                            downloadDao.setFailed(
+                                taskId,
+                                DownloadStatus.FAILED.name,
+                                e.localizedMessage ?: "Ошибка скачивания"
+                            )
+                        } else {
+                            Log.w(TAG, "Attempt $attempt failed for $taskId (${e.message}); retrying from $resumeFrom")
+                            downloadDao.updateProgress(
+                                taskId,
+                                resumeFrom,
+                                0L,
+                                DownloadStatus.DOWNLOADING.name
+                            )
+                            delay(RETRY_DELAY_MS * attempt)
+                        }
                     }
                 }
+            } finally {
+                downloadSlots.release()
             }
         }
 
@@ -259,7 +332,8 @@ class DownloadRepository(
             cloudBoxDir
         } else {
             // App-specific external downloads directory as fallback
-            val fallback = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
+            val fallback = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                ?: appContext.filesDir
             fallback.mkdirs()
             fallback
         }

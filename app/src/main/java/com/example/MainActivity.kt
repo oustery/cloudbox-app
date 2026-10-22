@@ -1,11 +1,16 @@
 package com.example
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
@@ -103,6 +108,20 @@ import com.example.ui.theme.UiSpacing
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        /** Extra telling the app which screen to open (used by the download notification). */
+        const val EXTRA_OPEN_SCREEN = "open_screen"
+        const val SCREEN_DOWNLOADS = "downloads"
+    }
+
+    /** Screen requested from outside (notification tap); consumed by [MainAppScreen]. */
+    private val pendingScreen = mutableStateOf<String?>(null)
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            // Denied: downloads keep working, the progress notification is simply hidden.
+        }
+
     private val cloudViewModel: CloudLinkViewModel by viewModels {
         val db = AppDatabase.getDatabase(applicationContext)
         val repo = CloudMailRuRepository(savedLinkDao = db.savedLinkDao())
@@ -110,9 +129,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val downloadViewModel: DownloadViewModel by viewModels {
-        val db = AppDatabase.getDatabase(applicationContext)
-        val cloudRepo = CloudMailRuRepository(savedLinkDao = db.savedLinkDao())
-        val downloadRepo = DownloadRepository(applicationContext, db.downloadDao(), cloudRepo)
+        val downloadRepo = DownloadRepository.getInstance(applicationContext)
         DownloadViewModelFactory(downloadRepo)
     }
 
@@ -121,6 +138,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        requestNotificationPermissionIfNeeded()
 
         // Handle shared link if launched via Intent.ACTION_SEND
         handleIncomingIntent(intent)
@@ -141,7 +160,9 @@ class MainActivity : ComponentActivity() {
                     cloudViewModel = cloudViewModel,
                     downloadViewModel = downloadViewModel,
                     settings = settings,
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    pendingScreen = pendingScreen.value,
+                    onPendingScreenConsumed = { pendingScreen.value = null }
                 )
             }
         }
@@ -153,11 +174,24 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
+        intent?.getStringExtra(EXTRA_OPEN_SCREEN)?.let { requested ->
+            pendingScreen.value = requested
+        }
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
             val weblink = CloudUrlParser.extractWeblink(sharedText)
             if (weblink != null) {
                 cloudViewModel.loadFolder(weblink)
+            }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
@@ -169,7 +203,9 @@ fun MainAppScreen(
     cloudViewModel: CloudLinkViewModel,
     downloadViewModel: DownloadViewModel,
     settings: AppSettings,
-    settingsViewModel: AppSettingsViewModel
+    settingsViewModel: AppSettingsViewModel,
+    pendingScreen: String? = null,
+    onPendingScreenConsumed: () -> Unit = {}
 ) {
     var currentScreen by remember { mutableStateOf("home") } // home, explorer, downloads, settings
     var previousScreen by remember { mutableStateOf("home") }
@@ -190,6 +226,14 @@ fun MainAppScreen(
     LaunchedEffect(currentFolder) {
         if (currentFolder != null && currentScreen == "home") {
             currentScreen = "explorer"
+        }
+    }
+
+    // External navigation request (e.g. tapping the download notification)
+    LaunchedEffect(pendingScreen) {
+        if (pendingScreen != null) {
+            currentScreen = pendingScreen
+            onPendingScreenConsumed()
         }
     }
 

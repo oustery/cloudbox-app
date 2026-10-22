@@ -20,6 +20,9 @@ interface DownloadDao {
     @Query("SELECT * FROM download_tasks WHERE status IN ('QUEUED', 'DOWNLOADING')")
     fun getActiveTasks(): Flow<List<DownloadTaskEntity>>
 
+    @Query("SELECT * FROM download_tasks WHERE status IN ('QUEUED', 'DOWNLOADING')")
+    suspend fun getActiveTasksOnce(): List<DownloadTaskEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTask(task: DownloadTaskEntity)
 
