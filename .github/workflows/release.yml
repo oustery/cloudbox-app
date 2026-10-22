@@ -172,7 +172,7 @@ jobs:
             echo "Tag 'latest' not found yet (HTTP ${status_code}); the release step will create it."
           fi
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release.outputs.tag }}
           name: ${{ steps.release.outputs.title }}
