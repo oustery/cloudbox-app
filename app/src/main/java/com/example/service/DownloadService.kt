@@ -289,6 +289,9 @@ class DownloadService : Service() {
     }
 
     private fun createChannel() {
+        // Notification channels exist on API 26+; older devices just show the
+        // legacy notification without a channel.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.notification_channel_downloads),
