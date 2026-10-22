@@ -17,6 +17,15 @@ object UiSpacing {
     val doubleExtraLarge = 32.dp
 }
 
+/** Shared corner radius scale. Pills always resolve to a fully rounded stadium. */
+object UiRadius {
+    val small = 12.dp
+    val medium = 16.dp
+    val large = 20.dp
+    val sheet = 28.dp
+    val pill = 999.dp
+}
+
 /** Shared motion durations and easing curves for short, standard, and emphasized transitions. */
 object UiMotionTokens {
     const val shortDurationMillis = 150

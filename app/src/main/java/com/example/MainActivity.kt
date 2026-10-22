@@ -80,9 +80,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -102,8 +102,8 @@ import com.example.ui.screens.FolderExplorerScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MediaViewerScreen
 import com.example.ui.screens.SettingsScreen
-import com.example.ui.theme.CloudBlue
-import com.example.ui.theme.CyanAccent
+import com.example.ui.theme.BrandGradientEnd
+import com.example.ui.theme.BrandGradientStart
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.UiMotionTokens
 import com.example.ui.viewmodel.CloudLinkViewModel
@@ -283,15 +283,14 @@ fun MainAppScreen(
                                     .size(34.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        Brush.linearGradient(listOf(CloudBlue, CyanAccent))
+                                        Brush.linearGradient(listOf(BrandGradientStart, BrandGradientEnd))
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Cloud,
+                                    painter = painterResource(com.example.R.drawable.ic_brand_mark),
                                     contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(19.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(UiSpacing.medium))
@@ -304,8 +303,8 @@ fun MainAppScreen(
                                 )
                                 Text(
                                     text = "Облако Mail.ru",
-                                    fontSize = 11.sp,
-                                    color = CloudBlue,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -321,8 +320,8 @@ fun MainAppScreen(
                                 badge = {
                                     if (activeDownloadsCount > 0) {
                                         Badge(
-                                            containerColor = CyanAccent,
-                                            contentColor = Color.Black
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
                                         ) {
                                             Text(
                                                 text = activeDownloadsCount.toString(),
@@ -336,7 +335,7 @@ fun MainAppScreen(
                                 Icon(
                                     imageVector = Icons.Default.CloudDownload,
                                     contentDescription = "Загрузки",
-                                    tint = if (currentScreen == "downloads") CloudBlue else MaterialTheme.colorScheme.onSurface
+                                    tint = if (currentScreen == "downloads") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -422,8 +421,8 @@ fun MainAppScreen(
                                 badge = {
                                     if (activeDownloadsCount > 0) {
                                         Badge(
-                                            containerColor = CyanAccent,
-                                            contentColor = Color.Black
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
                                         ) {
                                             Text(
                                                 text = activeDownloadsCount.toString(),

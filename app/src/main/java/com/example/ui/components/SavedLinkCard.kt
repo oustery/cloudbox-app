@@ -40,7 +40,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.SavedLinkEntity
-import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.UiSpacing
 
 @Composable
@@ -82,7 +81,7 @@ fun SavedLinkCard(
                 Icon(
                     imageVector = Icons.Default.Folder,
                     contentDescription = null,
-                    tint = CloudBlue,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -132,7 +131,7 @@ fun SavedLinkCard(
                 Icon(
                     imageVector = if (link.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                     contentDescription = "Избранное",
-                    tint = if (link.isFavorite) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (link.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
