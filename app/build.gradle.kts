@@ -10,6 +10,8 @@ plugins {
 
 val appVersionCode = providers.gradleProperty("appVersionCode").orNull?.toIntOrNull() ?: 1
 val appVersionName = providers.gradleProperty("appVersionName").orNull ?: "1.0"
+// Short git commit the app was built from; "dev" for local builds. Passed by CI/CD.
+val gitSha = providers.gradleProperty("gitSha").orNull ?: "dev"
 
 android {
   namespace = "com.example"
@@ -21,6 +23,11 @@ android {
     targetSdk = 36
     versionCode = appVersionCode
     versionName = appVersionName
+
+    // Exposed to the in-app updater (AppUpdateManager) to compare against the
+    // latest GitHub release of this repository.
+    buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
+    buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
