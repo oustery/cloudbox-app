@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar" />
+    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar">
+        <!-- Theme-aware launch background to avoid a white flash before Compose attaches. -->
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
+    </style>
 </resources>

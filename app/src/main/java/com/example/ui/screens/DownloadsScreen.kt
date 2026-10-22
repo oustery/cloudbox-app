@@ -92,8 +92,8 @@ fun DownloadsScreen(
     ) {
         // Top Bar
         Surface(
-            tonalElevation = 2.dp,
-            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            color = MaterialTheme.colorScheme.background,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(

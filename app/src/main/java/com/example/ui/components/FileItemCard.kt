@@ -55,8 +55,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.CloudItem
-import com.example.ui.theme.CloudBlue
-import com.example.ui.theme.CyanAccent
 import com.example.ui.theme.UiSpacing
 
 @Composable

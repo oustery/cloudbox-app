@@ -45,8 +45,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.CloudBlue
-import com.example.ui.theme.CyanAccent
+import com.example.ui.theme.BrandGradientEnd
+import com.example.ui.theme.BrandGradientStart
 import com.example.ui.theme.UiSpacing
 
 @Composable
@@ -81,7 +81,7 @@ fun LinkIntakeCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(colors = listOf(CloudBlue, CyanAccent))),
+                        .background(Brush.linearGradient(colors = listOf(BrandGradientStart, BrandGradientEnd))),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

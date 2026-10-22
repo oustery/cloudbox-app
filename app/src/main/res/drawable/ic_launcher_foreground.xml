@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CloudBox launcher foreground: white "box with cloud cutout" mark inside the adaptive safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M43.5,32.5 L64.5,32.5 A14,14 0 0 1 78.5,46.5 L78.5,61.5 A14,14 0 0 1 64.5,75.5 L43.5,75.5 A14,14 0 0 1 29.5,61.5 L29.5,46.5 A14,14 0 0 1 43.5,32.5 Z M64.44,50.42 C63.47,45.52 59.16,41.84 54,41.84 C49.9,41.84 46.33,44.17 44.56,47.58 C40.28,48.03 36.96,51.65 36.96,56.02 C36.96,60.74 40.78,64.56 45.48,64.56 L63.94,64.56 C67.86,64.56 71.04,61.4 71.04,57.46 C71.04,53.71 68.13,50.67 64.44,50.42 Z"/>
+</vector>

@@ -208,7 +208,7 @@ fun HomeScreen(
                                 imageVector = Icons.Default.Star,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = Color(0xFFFFB300)
+                                tint = MaterialTheme.colorScheme.tertiary
                             )
                         }
                     } else null,

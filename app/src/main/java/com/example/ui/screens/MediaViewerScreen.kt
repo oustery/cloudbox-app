@@ -124,12 +124,13 @@ import com.example.data.api.CloudUrlParser
 import com.example.data.model.CloudItem
 import com.example.data.repository.ThumbnailSize
 import com.example.ui.theme.UiMotionTokens
+import com.example.ui.theme.BrandAccent
 import com.example.ui.theme.UiSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
-/** Fixed accent tuned for legibility on top of video frames in both themes. */
-private val PlayerAccent = Color(0xFFFF8FA8)
+/** Brand accent (rose) tuned for legibility on top of video frames in both themes. */
+private val PlayerAccent = BrandAccent
 private val PlayerOnSurface = Color.White
 
 private const val PLAYER_USER_AGENT =
