@@ -81,6 +81,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CloudItem
 import com.example.data.model.CloudItemSortOrder
 import com.example.data.model.sortedBy
+import com.example.data.repository.ThumbnailSize
 import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.FileItemCard
 import com.example.ui.components.ContentStatePanel
@@ -457,8 +458,11 @@ fun FolderExplorerScreen(
 
                             FileItemCard(
                                 item = item,
-                                thumbnailUrl = item.takeIf { it.isImage || it.isVideo }
-                                    ?.let { viewModel.getThumbnailUrl(it.weblink, 512) },
+                                thumbnailUrl = when {
+                                    item.isImage -> viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.HIGH_RES)
+                                    item.isVideo -> viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.VIDEO_POSTER)
+                                    else -> null
+                                },
                                 isGrid = true,
                                 isSelected = isSelected,
                                 isSelectionMode = isSelectionMode,
@@ -496,7 +500,7 @@ fun FolderExplorerScreen(
                             FileItemCard(
                                 item = item,
                                 thumbnailUrl = item.takeIf { it.isImage || it.isVideo }
-                                    ?.let { viewModel.getThumbnailUrl(it.weblink, 512) },
+                                    ?.let { viewModel.getThumbnailUrl(it.weblink, ThumbnailSize.SMALL) },
                                 isGrid = false,
                                 isSelected = isSelected,
                                 isSelectionMode = isSelectionMode,

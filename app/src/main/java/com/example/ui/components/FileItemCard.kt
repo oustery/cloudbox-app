@@ -47,11 +47,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.data.model.CloudItem
 import com.example.ui.theme.CloudBlue
 import com.example.ui.theme.CyanAccent
@@ -145,7 +147,10 @@ private fun FileGridItem(
 
             if (thumbnailUrl != null && (item.isImage || item.isVideo)) {
                 AsyncImage(
-                    model = thumbnailUrl,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(thumbnailUrl)
+                        .crossfade(220)
+                        .build(),
                     contentDescription = "Предпросмотр: ${item.name}",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -289,7 +294,10 @@ private fun FileListItem(
                 )
                 if (thumbnailUrl != null && (item.isImage || item.isVideo)) {
                     AsyncImage(
-                        model = thumbnailUrl,
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(thumbnailUrl)
+                            .crossfade(180)
+                            .build(),
                         contentDescription = "Предпросмотр: ${item.name}",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
