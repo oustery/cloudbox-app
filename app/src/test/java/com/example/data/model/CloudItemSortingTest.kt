@@ -109,7 +109,7 @@ class CloudItemSortingTest {
     fun sizeSortSmallestFirstAndUnknownSizeLast() {
         val unknown = CloudItem(name = "unknown.bin", type = "document", size = 0)
         assertEquals(
-            listOf("new.jpg", "old.jpg", "short.mp4", "unknown.bin", "large.mp4"),
+            listOf("new.jpg", "old.jpg", "short.mp4", "large.mp4", "unknown.bin"),
             listOf(unknown, largest, shortest, newest, oldest)
                 .sortedByOrder(CloudItemSortOrder.SIZE_SMALLEST)
                 .map { it.name }
