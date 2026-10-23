@@ -171,10 +171,13 @@ fun FolderExplorerScreen(
             item.name.contains(searchQuery, ignoreCase = true)
         }
         matchesFilter && matchesQuery
-    }.sortedWith(
-        compareBy<AggregatedEntry> { !it.item.isFolder }
-            .then(cloudItemComparator(fileSortOrder))
-    )
+    }.let { list ->
+        val orderComparator = cloudItemComparator(fileSortOrder)
+        list.sortedWith(
+            compareBy<AggregatedEntry> { !it.item.isFolder }
+                .thenComparator { a, b -> orderComparator.compare(a.item, b.item) }
+        )
+    }
 
     Column(
         modifier = modifier
