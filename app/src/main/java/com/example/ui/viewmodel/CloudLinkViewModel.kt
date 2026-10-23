@@ -257,15 +257,16 @@ class CloudLinkViewModel(
 
                 poolDirty = true
 
-                // Auto-save to library if this is the root folder
+                // Auto-save to library if this is the root folder. The stored
+                // category and a user-set custom title are preserved.
                 val firstImage = folderResult.items.firstOrNull { it.isImage }
                 val thumbUrl = firstImage?.let { repository.getThumbnailUrl(it.weblink, ThumbnailSize.HIGH_RES) }
                 repository.saveLink(
                     url = CloudUrlParser.toFullPublicUrl(folderResult.weblinkKey),
                     title = folderResult.name,
-                    category = "Все",
                     itemCount = folderResult.items.size,
-                    previewThumbnailUrl = thumbUrl
+                    previewThumbnailUrl = thumbUrl,
+                    updateTitle = false
                 )
             }.onFailure { exception ->
                 _isLoadingFolder.value = false
@@ -395,6 +396,73 @@ class CloudLinkViewModel(
     fun toggleFavorite(id: Long, currentFav: Boolean) {
         viewModelScope.launch {
             repository.toggleFavorite(id, !currentFav)
+        }
+    }
+
+    /** Renames a saved link; confirms via snackbar. */
+    fun renameSavedLink(id: Long, newTitle: String) {
+        viewModelScope.launch {
+            repository.renameLink(id, newTitle)
+            UiMessenger.show("Название обновлено")
+        }
+    }
+
+    /** Moves a saved link to a library category; confirms via snackbar. */
+    fun setSavedLinkCategory(id: Long, category: String) {
+        viewModelScope.launch {
+            repository.setLinkCategory(id, category)
+            UiMessenger.show("Категория: $category")
+        }
+    }
+
+    private val _isRefreshingLinks = MutableStateFlow(false)
+    val isRefreshingLinks: StateFlow<Boolean> = _isRefreshingLinks.asStateFlow()
+
+    /**
+     * Pull-to-refresh for the library: re-fetches the root folder of every
+     * saved link in parallel and updates its file count and cover preview.
+     * Titles and user categories are never touched.
+     */
+    fun refreshSavedLinkCounts() {
+        if (_isRefreshingLinks.value) return
+        viewModelScope.launch {
+            _isRefreshingLinks.value = true
+            val links = repository.getSavedLinksOnce()
+            var updated = 0
+            var failed = 0
+            coroutineScope {
+                links.map { link ->
+                    async {
+                        val outcome: Result<FolderResult> = try {
+                            repository.fetchFolderContent(link.weblinkKey)
+                        } catch (ce: CancellationException) {
+                            throw ce
+                        } catch (t: Throwable) {
+                            Result.failure(t)
+                        }
+                        outcome.onSuccess { folder ->
+                            val firstImage = folder.items.firstOrNull { it.isImage }
+                            val thumbUrl = firstImage?.let {
+                                repository.getThumbnailUrl(it.weblink, ThumbnailSize.HIGH_RES)
+                            }
+                            repository.updateLinkStats(
+                                id = link.id,
+                                itemCount = folder.items.size,
+                                previewThumbnailUrl = thumbUrl
+                            )
+                        }
+                        outcome.isSuccess
+                    }
+                }.awaitAll()
+            }.forEach { success -> if (success) updated++ else failed++ }
+
+            _savedLinksTotal.value = links.size
+            poolDirty = true
+            _isRefreshingLinks.value = false
+            UiMessenger.show(
+                if (failed == 0) "Библиотека обновлена: $updated ${if (updated == 1) "ссылка" else "ссылок"}"
+                else "Обновлено: $updated, не удалось: $failed"
+            )
         }
     }
 

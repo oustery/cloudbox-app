@@ -631,6 +631,12 @@ fun MainAppScreen(
                             onOpenFolder = { weblink ->
                                 cloudViewModel.loadFolder(weblink)
                                 currentScreen = "explorer"
+                            },
+                            onOpenPool = {
+                                // Drop any stale open folder; the explorer
+                                // auto-loads the unified pool when empty.
+                                cloudViewModel.closeFolder()
+                                currentScreen = "explorer"
                             }
                         )
                     }
