@@ -134,34 +134,34 @@ enum class CloudItemSortOrder(val title: String) {
 }
 
 /**
+ * Order-specific comparator for cloud items. Unknown values (mtime = 0,
+ * size = 0) sink to the tail of their group instead of polluting the top.
+ */
+fun cloudItemComparator(order: CloudItemSortOrder): Comparator<CloudItem> = when (order) {
+    CloudItemSortOrder.DATE_NEWEST -> compareByDescending<CloudItem> { it.mtime }
+        .thenBy { it.name.lowercase(Locale.ROOT) }
+    CloudItemSortOrder.DATE_OLDEST -> compareBy<CloudItem> { it.mtime <= 0L }
+        .thenBy { it.mtime }
+        .thenBy { it.name.lowercase(Locale.ROOT) }
+    CloudItemSortOrder.NAME_AZ -> compareBy<CloudItem> { it.name.lowercase(Locale.ROOT) }
+    CloudItemSortOrder.NAME_ZA -> compareByDescending<CloudItem> { it.name.lowercase(Locale.ROOT) }
+    CloudItemSortOrder.SIZE_LARGEST -> compareByDescending<CloudItem> { it.size }
+        .thenBy { it.name.lowercase(Locale.ROOT) }
+    CloudItemSortOrder.SIZE_SMALLEST -> compareBy<CloudItem> { it.size <= 0L }
+        .thenBy { it.size }
+        .thenBy { it.name.lowercase(Locale.ROOT) }
+    CloudItemSortOrder.DURATION_LONGEST -> compareBy<CloudItem> { it.mediaDurationSeconds == null }
+        .thenByDescending { it.mediaDurationSeconds ?: Long.MIN_VALUE }
+        .thenBy { it.name.lowercase(Locale.ROOT) }
+}
+
+/**
  * Folders always come first (canonical file-manager behaviour); files inside
- * each group follow the chosen order. Unknown values (mtime = 0, size = 0)
- * sink to the tail of their group instead of polluting the top of the list.
- *
+ * each group follow the chosen order.
  * Named [sortedByOrder] to avoid clashing with the stdlib Iterable.sortedBy.
  */
-fun List<CloudItem>.sortedByOrder(order: CloudItemSortOrder): List<CloudItem> {
-    val fileComparator: Comparator<CloudItem> = when (order) {
-        CloudItemSortOrder.DATE_NEWEST -> compareByDescending<CloudItem> { it.mtime }
-            .thenBy { it.name.lowercase(Locale.ROOT) }
-        CloudItemSortOrder.DATE_OLDEST -> compareBy<CloudItem> { it.mtime <= 0L }
-            .thenBy { it.mtime }
-            .thenBy { it.name.lowercase(Locale.ROOT) }
-        CloudItemSortOrder.NAME_AZ -> compareBy<CloudItem> { it.name.lowercase(Locale.ROOT) }
-        CloudItemSortOrder.NAME_ZA -> compareByDescending<CloudItem> { it.name.lowercase(Locale.ROOT) }
-        CloudItemSortOrder.SIZE_LARGEST -> compareByDescending<CloudItem> { it.size }
-            .thenBy { it.name.lowercase(Locale.ROOT) }
-        CloudItemSortOrder.SIZE_SMALLEST -> compareBy<CloudItem> { it.size <= 0L }
-            .thenBy { it.size }
-            .thenBy { it.name.lowercase(Locale.ROOT) }
-        CloudItemSortOrder.DURATION_LONGEST -> compareBy<CloudItem> { it.mediaDurationSeconds == null }
-            .thenByDescending { it.mediaDurationSeconds ?: Long.MIN_VALUE }
-            .thenBy { it.name.lowercase(Locale.ROOT) }
-    }
-    return sortedWith(
-        compareBy<CloudItem> { !it.isFolder }.then(fileComparator)
-    )
-}
+fun List<CloudItem>.sortedByOrder(order: CloudItemSortOrder): List<CloudItem> =
+    sortedWith(compareBy<CloudItem> { !it.isFolder }.then(cloudItemComparator(order)))
 
 @JsonClass(generateAdapter = true)
 data class FolderCount(
