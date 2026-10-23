@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
@@ -30,10 +32,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,12 +48,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.data.local.SavedLinkEntity
@@ -59,9 +67,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Saved-link card: cover preview from the cloud, human-readable meta line
- * (files count + date added), the raw weblink key and a compact overflow menu
- * (open / copy link / delete) instead of always-visible destructive actions.
+ * Saved-link card with reversible swipe actions:
+ *  - swipe right -> favorite toggle (springs back, does not dismiss)
+ *  - swipe left  -> delete (goes through the undo snackbar path)
+ * Plus the overflow menu: open / rename / category / copy link / delete.
  */
 @Composable
 fun SavedLinkCard(
@@ -69,165 +78,269 @@ fun SavedLinkCard(
     onClick: () -> Unit,
     onFavoriteToggle: () -> Unit,
     onDeleteClick: () -> Unit,
+    onRenameClick: () -> Unit,
+    onCategoryClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(UiRadius.large))
-            .clickable(onClick = onClick)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(UiRadius.large)
-            )
-            .testTag("saved_link_${link.weblinkKey}"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(UiSpacing.medium),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Cover preview or cloud folder fallback
+    // Swipe right (StartToEnd) = favorite: the change fires, then the card
+    // springs back because confirmValueChange returns false. Swipe left
+    // (EndToStart) = delete: settles, the list drops the item, undo restores.
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onFavoriteToggle()
+                    false
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onDeleteClick()
+                    true
+                }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier.testTag("saved_link_swipe_${link.weblinkKey}"),
+        backgroundContent = {
+            val isDeleteSide = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+            val backgroundColor =
+                if (isDeleteSide) MaterialTheme.colorScheme.errorContainer
+                else MaterialTheme.colorScheme.tertiaryContainer
+            val contentColor =
+                if (isDeleteSide) MaterialTheme.colorScheme.onErrorContainer
+                else MaterialTheme.colorScheme.onTertiaryContainer
             Box(
                 modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(UiRadius.large))
+                    .background(backgroundColor)
+                    .padding(horizontal = UiSpacing.extraLarge),
+                contentAlignment = if (isDeleteSide) Alignment.CenterEnd else Alignment.CenterStart
             ) {
-                if (link.previewThumbnailUrl != null) {
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(link.previewThumbnailUrl)
-                            .crossfade(220)
-                            .build(),
-                        contentDescription = "Превью: ${link.title}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        loading = {
-                            Box(modifier = Modifier.fillMaxSize().shimmerPlaceholder())
-                        },
-                        error = {
-                            Icon(
-                                imageVector = Icons.Default.Folder,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(30.dp)
-                            )
-                        }
+                if (isDeleteSide) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Удалить свайпом",
+                        tint = contentColor
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.Folder,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(UiSpacing.medium))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = link.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(UiSpacing.micro))
-                Text(
-                    text = buildString {
-                        append(if (link.itemCount > 0) filesLabel(link.itemCount) else "Папка")
-                        append(" • ")
-                        append(formatCardDate(link.createdAt))
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(UiSpacing.micro))
-                Text(
-                    text = link.weblinkKey,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            IconButton(
-                onClick = onFavoriteToggle,
-                modifier = Modifier.size(40.dp).testTag("saved_link_favorite")
-            ) {
-                Icon(
-                    imageVector = if (link.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                    contentDescription = "Избранное",
-                    tint = if (link.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Box {
-                IconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.size(40.dp).testTag("saved_link_menu")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Ещё действия",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Открыть") },
-                        leadingIcon = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
-                        onClick = {
-                            menuExpanded = false
-                            onClick()
-                        },
-                        modifier = Modifier.testTag("saved_link_menu_open")
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Копировать ссылку") },
-                        leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
-                        onClick = {
-                            menuExpanded = false
-                            copyLinkToClipboard(context, link.url)
-                        },
-                        modifier = Modifier.testTag("saved_link_menu_copy")
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Удалить") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            onDeleteClick()
-                        },
-                        modifier = Modifier.testTag("saved_link_menu_delete")
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = "В избранное свайпом",
+                        tint = contentColor
                     )
                 }
             }
         }
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(UiRadius.large))
+                .clickable(onClick = onClick)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(UiRadius.large)
+                )
+                .testTag("saved_link_${link.weblinkKey}"),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(UiSpacing.medium),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Cover preview or cloud folder fallback
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (link.previewThumbnailUrl != null) {
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(link.previewThumbnailUrl)
+                                .crossfade(220)
+                                .build(),
+                            contentDescription = "Превью: ${link.title}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            loading = {
+                                Box(modifier = Modifier.fillMaxSize().shimmerPlaceholder())
+                            },
+                            error = {
+                                Icon(
+                                    imageVector = Icons.Default.Folder,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Folder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(UiSpacing.medium))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = link.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(UiSpacing.micro))
+                    Text(
+                        text = buildString {
+                            append(if (link.itemCount > 0) filesLabel(link.itemCount) else "Папка")
+                            append(" • ")
+                            append(formatCardDate(link.createdAt))
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(UiSpacing.micro))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (link.category.isNotBlank() && link.category != "Все") {
+                            CategoryTag(label = link.category)
+                            Spacer(modifier = Modifier.width(UiSpacing.small))
+                        }
+                        Text(
+                            text = link.weblinkKey,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = onFavoriteToggle,
+                    modifier = Modifier.size(40.dp).testTag("saved_link_favorite")
+                ) {
+                    Icon(
+                        imageVector = if (link.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = "Избранное",
+                        tint = if (link.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier.size(40.dp).testTag("saved_link_menu")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Ещё действия",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Открыть") },
+                            leadingIcon = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onClick()
+                            },
+                            modifier = Modifier.testTag("saved_link_menu_open")
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Переименовать") },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onRenameClick()
+                            },
+                            modifier = Modifier.testTag("saved_link_menu_rename")
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Категория") },
+                            leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onCategoryClick()
+                            },
+                            modifier = Modifier.testTag("saved_link_menu_category")
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Копировать ссылку") },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                copyLinkToClipboard(context, link.url)
+                            },
+                            modifier = Modifier.testTag("saved_link_menu_copy")
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Удалить",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onDeleteClick()
+                            },
+                            modifier = Modifier.testTag("saved_link_menu_delete")
+                        )
+                    }
+                }
+            }
+        }
     }
+}
+
+/** Small colored tag showing the link's library category. */
+@Composable
+private fun CategoryTag(label: String) {
+    Text(
+        text = label,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.secondary,
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(4.dp)
+            )
+            .padding(horizontal = UiSpacing.iconGap, vertical = UiSpacing.micro)
+    )
 }
 
 private fun copyLinkToClipboard(context: Context, url: String) {
@@ -241,7 +354,7 @@ private fun copyLinkToClipboard(context: Context, url: String) {
 }
 
 /** Russian pluralization: 1 файл / 2 файла / 5 файлов / 12 файлов. */
-private fun filesLabel(count: Int): String {
+internal fun filesLabel(count: Int): String {
     val abs = count % 100
     val last = abs % 10
     return when {

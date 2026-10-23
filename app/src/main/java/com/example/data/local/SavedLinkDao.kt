@@ -38,4 +38,13 @@ interface SavedLinkDao {
 
     @Query("UPDATE saved_links SET isFavorite = :isFavorite WHERE id = :id")
     suspend fun setFavorite(id: Long, isFavorite: Boolean)
+
+    @Query("UPDATE saved_links SET title = :title WHERE id = :id")
+    suspend fun setTitle(id: Long, title: String)
+
+    @Query("UPDATE saved_links SET category = :category WHERE id = :id")
+    suspend fun setCategory(id: Long, category: String)
+
+    @Query("UPDATE saved_links SET itemCount = :itemCount, previewThumbnailUrl = :previewUrl WHERE id = :id")
+    suspend fun setLinkStats(id: Long, itemCount: Int, previewUrl: String?)
 }

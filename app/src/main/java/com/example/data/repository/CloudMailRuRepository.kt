@@ -60,19 +60,28 @@ class CloudMailRuRepository(
         savedLinkDao.getAllSavedLinksOnce()
     }
 
+    /**
+     * Inserts a link or refreshes an existing one.
+     *
+     * Update semantics protect user edits: a null [category] keeps the
+     * stored category, and [updateTitle] = false keeps a user-renamed title
+     * from being clobbered by the server folder name on re-open/refresh.
+     * Zero [itemCount] and null [previewThumbnailUrl] keep stored values.
+     */
     suspend fun saveLink(
         url: String,
         title: String,
-        category: String = "Все",
+        category: String? = null,
         itemCount: Int = 0,
-        previewThumbnailUrl: String? = null
+        previewThumbnailUrl: String? = null,
+        updateTitle: Boolean = true
     ): Long = withContext(Dispatchers.IO) {
         val weblinkKey = CloudUrlParser.extractWeblink(url) ?: url
         val existing = savedLinkDao.getByWeblink(weblinkKey)
         if (existing != null) {
             val updated = existing.copy(
-                title = if (title.isNotBlank()) title else existing.title,
-                category = category,
+                title = if (updateTitle && title.isNotBlank()) title else existing.title,
+                category = category ?: existing.category,
                 itemCount = if (itemCount > 0) itemCount else existing.itemCount,
                 previewThumbnailUrl = previewThumbnailUrl ?: existing.previewThumbnailUrl
             )
@@ -83,13 +92,32 @@ class CloudMailRuRepository(
                 url = url,
                 weblinkKey = weblinkKey,
                 title = if (title.isNotBlank()) title else weblinkKey,
-                category = category,
+                category = category ?: "Все",
                 itemCount = itemCount,
                 previewThumbnailUrl = previewThumbnailUrl
             )
             savedLinkDao.insertLink(entity)
         }
     }
+
+    /** Renames a link without touching any other field. */
+    suspend fun renameLink(id: Long, title: String) = withContext(Dispatchers.IO) {
+        if (title.isNotBlank()) savedLinkDao.setTitle(id, title.trim())
+    }
+
+    /** Moves a link to a library category (Фото и видео / Документы / Архивы / Все). */
+    suspend fun setLinkCategory(id: Long, category: String) = withContext(Dispatchers.IO) {
+        savedLinkDao.setCategory(id, category)
+    }
+
+    /**
+     * Refreshes volatile stats (file count, cover preview) for one link
+     * without touching its title or category — used by pull-to-refresh.
+     */
+    suspend fun updateLinkStats(id: Long, itemCount: Int, previewThumbnailUrl: String?) =
+        withContext(Dispatchers.IO) {
+            savedLinkDao.setLinkStats(id, itemCount, previewThumbnailUrl)
+        }
 
     suspend fun deleteLink(id: Long) = withContext(Dispatchers.IO) {
         savedLinkDao.deleteById(id)
