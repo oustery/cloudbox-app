@@ -7,6 +7,7 @@ import com.example.data.local.DownloadStatus
 import com.example.data.local.DownloadTaskEntity
 import com.example.data.model.CloudItem
 import com.example.data.repository.DownloadRepository
+import com.example.ui.core.feedback.UiMessenger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -102,10 +103,28 @@ class DownloadViewModel(
 
     fun downloadItem(item: CloudItem) {
         repository.enqueueDownload(item)
+        UiMessenger.show("Добавлено в очередь: ${item.name}")
     }
 
     fun downloadBatch(items: List<CloudItem>) {
+        if (items.isEmpty()) return
         repository.enqueueBatch(items)
+        UiMessenger.show(
+            if (items.size == 1) "Добавлено в очередь: ${items[0].name}"
+            else "В очереди: ${items.size} ${filesPlural(items.size)}"
+        )
+    }
+
+    /** Russian pluralization: 1 файл / 2 файла / 5 файлов. */
+    private fun filesPlural(count: Int): String {
+        val abs = count % 100
+        val last = abs % 10
+        return when {
+            abs in 11..14 -> "файлов"
+            last == 1 -> "файл"
+            last in 2..4 -> "файла"
+            else -> "файлов"
+        }
     }
 
     fun pauseDownload(id: String) {

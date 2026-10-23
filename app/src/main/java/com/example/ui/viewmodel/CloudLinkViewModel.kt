@@ -10,6 +10,7 @@ import com.example.data.model.CloudItemSortOrder
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
 import com.example.data.repository.ThumbnailSize
+import com.example.ui.core.feedback.UiMessenger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -397,10 +398,23 @@ class CloudLinkViewModel(
         }
     }
 
-    fun deleteSavedLink(id: Long) {
+    /**
+     * Deletes a saved link but keeps an undo path: the entity is re-inserted
+     * (same id, INSERT REPLACE) if the user taps "Отменить" on the snackbar.
+     */
+    fun deleteSavedLinkWithUndo(link: SavedLinkEntity) {
         viewModelScope.launch {
-            repository.deleteLink(id)
+            repository.deleteLink(link.id)
             poolDirty = true
+            UiMessenger.showWithAction(
+                text = "Ссылка «${link.title}» удалена",
+                actionLabel = "Отменить"
+            ) {
+                viewModelScope.launch {
+                    repository.restoreLink(link)
+                    poolDirty = true
+                }
+            }
         }
     }
 

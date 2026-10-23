@@ -59,6 +59,7 @@ import com.example.ui.components.LinkIntakeCard
 import com.example.ui.components.ContentStatePanel
 import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.UpdateBanner
+import com.example.ui.core.feedback.rememberHaptics
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.theme.UiSpacing
 
@@ -70,6 +71,7 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val haptics = rememberHaptics()
     val savedLinks by viewModel.savedLinks.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -253,8 +255,11 @@ fun HomeScreen(
                     SavedLinkCard(
                         link = link,
                         onClick = { onOpenFolder(link.weblinkKey) },
-                        onFavoriteToggle = { viewModel.toggleFavorite(link.id, link.isFavorite) },
-                        onDeleteClick = { viewModel.deleteSavedLink(link.id) }
+                        onFavoriteToggle = {
+                            haptics.tick()
+                            viewModel.toggleFavorite(link.id, link.isFavorite)
+                        },
+                        onDeleteClick = { viewModel.deleteSavedLinkWithUndo(link) }
                     )
                 }
             }

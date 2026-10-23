@@ -56,6 +56,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.CloudItem
 import com.example.ui.components.expressive.MorphingIconButton
+import com.example.ui.core.feedback.rememberHaptics
 import com.example.ui.theme.UiSpacing
 
 @Composable
@@ -111,6 +112,7 @@ private fun FileGridItem(
     sourceLabel: String?,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHaptics()
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -255,7 +257,10 @@ private fun FileGridItem(
                 )
             } else if (!item.isFolder) {
                 IconButton(
-                    onClick = onDownloadClick,
+                    onClick = {
+                        haptics.tick()
+                        onDownloadClick()
+                    },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(UiSpacing.extraSmall)
@@ -286,6 +291,7 @@ private fun FileListItem(
     sourceLabel: String?,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHaptics()
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -396,7 +402,10 @@ private fun FileListItem(
                 }
             } else if (!item.isFolder) {
                 IconButton(
-                    onClick = onDownloadClick,
+                    onClick = {
+                        haptics.tick()
+                        onDownloadClick()
+                    },
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(

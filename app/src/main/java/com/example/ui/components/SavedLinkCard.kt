@@ -3,7 +3,6 @@ package com.example.ui.components
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.data.local.SavedLinkEntity
+import com.example.ui.core.feedback.UiMessenger
 import com.example.ui.theme.UiRadius
 import com.example.ui.theme.UiSpacing
 import java.text.SimpleDateFormat
@@ -234,9 +234,9 @@ private fun copyLinkToClipboard(context: Context, url: String) {
     try {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("CloudBox link", url))
-        Toast.makeText(context, "Ссылка скопирована", Toast.LENGTH_SHORT).show()
+        UiMessenger.show("Ссылка скопирована")
     } catch (e: Exception) {
-        // Clipboard unavailable — silently ignore.
+        UiMessenger.show("Не удалось скопировать ссылку")
     }
 }
 
