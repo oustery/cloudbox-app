@@ -125,6 +125,7 @@ fun FolderExplorerScreen(
     val selectedItems by viewModel.selectedItems.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
     val fileSortOrder by viewModel.fileSortOrder.collectAsStateWithLifecycle()
+    val gridDensity by viewModel.gridDensity.collectAsStateWithLifecycle()
     val aggregatedEntries by viewModel.aggregatedEntries.collectAsStateWithLifecycle()
     val isLoadingAggregated by viewModel.isLoadingAggregated.collectAsStateWithLifecycle()
     val aggregatedFailedCount by viewModel.aggregatedFailedCount.collectAsStateWithLifecycle()
@@ -534,7 +535,7 @@ fun FolderExplorerScreen(
                     ) {
                         if (isGridView) {
                             LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 140.dp),
+                                columns = GridCells.Adaptive(minSize = gridDensity.minSizeDp.dp),
                                 contentPadding = PaddingValues(UiSpacing.large),
                                 horizontalArrangement = Arrangement.spacedBy(UiSpacing.medium),
                                 verticalArrangement = Arrangement.spacedBy(UiSpacing.medium),

@@ -14,6 +14,18 @@ private val Context.uiPrefsDataStore by preferencesDataStore(name = "cloudbox_ui
 private val explorerSortOrderKey = stringPreferencesKey("explorer_sort_order")
 private val explorerFilterKey = stringPreferencesKey("explorer_filter")
 private val explorerGridViewKey = booleanPreferencesKey("explorer_grid_view")
+private val explorerGridDensityKey = stringPreferencesKey("explorer_grid_density")
+
+/**
+ * Density of the explorer grid: the minimum tile size fed to
+ * GridCells.Adaptive. Compact fits more columns, Comfortable gives larger
+ * thumbnails.
+ */
+enum class GridDensity(val title: String, val minSizeDp: Int) {
+    COMPACT("Компактно", 104),
+    STANDARD("Обычно", 140),
+    COMFORTABLE("Крупно", 184);
+}
 
 /**
  * Remembers the explorer's view state (sort order, file filter, grid/list)
@@ -38,6 +50,12 @@ class UiPrefs(context: Context) {
         preferences[explorerGridViewKey] ?: true
     }
 
+    val explorerGridDensity: Flow<GridDensity> = dataStore.data.map { preferences ->
+        preferences[explorerGridDensityKey]?.let { name ->
+            GridDensity.entries.firstOrNull { it.name == name }
+        } ?: GridDensity.STANDARD
+    }
+
     suspend fun setExplorerSortOrder(order: CloudItemSortOrder) {
         dataStore.edit { it[explorerSortOrderKey] = order.name }
     }
@@ -48,5 +66,9 @@ class UiPrefs(context: Context) {
 
     suspend fun setExplorerGridView(isGrid: Boolean) {
         dataStore.edit { it[explorerGridViewKey] = isGrid }
+    }
+
+    suspend fun setExplorerGridDensity(density: GridDensity) {
+        dataStore.edit { it[explorerGridDensityKey] = density.name }
     }
 }

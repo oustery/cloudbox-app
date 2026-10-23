@@ -19,30 +19,42 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import com.example.BuildConfig
 import com.example.data.preferences.AppSettings
 import com.example.data.preferences.AppThemeMode
+import com.example.data.preferences.GridDensity
+import com.example.data.update.AppUpdateManager
 import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.theme.UiSpacing
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
     explorerGridView: Boolean,
+    explorerGridDensity: GridDensity,
     onThemeModeChanged: (AppThemeMode) -> Unit,
     onDynamicColorsChanged: (Boolean) -> Unit,
     onExplorerGridViewChanged: (Boolean) -> Unit,
+    onExplorerGridDensityChanged: (GridDensity) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     BackHandler(onBack = onBack)
 
     Column(
@@ -144,6 +156,54 @@ fun SettingsScreen(
                         )
                     )
                 }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Text("Плотность сетки", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Сколько плиток файлов помещается в ряд в режиме сетки.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                AdaptiveChipGroup(
+                    items = GridDensity.entries.toList(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { density ->
+                    FilterChip(
+                        selected = explorerGridDensity == density,
+                        onClick = { onExplorerGridDensityChanged(density) },
+                        label = { Text(density.title) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        modifier = Modifier.testTag("grid_density_${density.name}")
+                    )
+                }
+            }
+        }
+
+        Text("О приложении", style = MaterialTheme.typography.titleMedium)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(UiSpacing.large),
+                verticalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall)
+            ) {
+                AboutRow("Версия", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                AboutRow("Сборка", BuildConfig.GIT_SHA)
+                AboutRow("Собрано", formatBuildTime(BuildConfig.BUILD_TIME))
+                Spacer(modifier = Modifier.height(UiSpacing.extraSmall))
+                OutlinedButton(
+                    onClick = { AppUpdateManager.openReleasePage(context) },
+                    modifier = Modifier.testTag("open_releases_page")
+                ) {
+                    Text("Страница релизов и обновлений")
+                }
             }
         }
 
@@ -154,6 +214,33 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+@Composable
+private fun AboutRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(0.4f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(0.6f)
+        )
+    }
+}
+
+private fun formatBuildTime(epochMillis: Long): String = try {
+    SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(epochMillis))
+} catch (e: Exception) {
+    ""
 }
 
 @Composable

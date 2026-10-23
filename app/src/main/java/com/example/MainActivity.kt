@@ -272,6 +272,7 @@ fun MainAppScreen(
     val isImeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
     val explorerGridView by settingsViewModel.explorerGridView.collectAsStateWithLifecycle()
+    val explorerGridDensity by settingsViewModel.explorerGridDensity.collectAsStateWithLifecycle()
 
     // When folder finishes loading, switch to explorer screen
     LaunchedEffect(currentFolder) {
@@ -656,9 +657,11 @@ fun MainAppScreen(
                         SettingsScreen(
                             settings = settings,
                             explorerGridView = explorerGridView,
+                            explorerGridDensity = explorerGridDensity,
                             onThemeModeChanged = settingsViewModel::setThemeMode,
                             onDynamicColorsChanged = settingsViewModel::setDynamicColors,
                             onExplorerGridViewChanged = settingsViewModel::setExplorerGridView,
+                            onExplorerGridDensityChanged = settingsViewModel::setExplorerGridDensity,
                             onBack = { currentScreen = previousScreen }
                         )
                     }
