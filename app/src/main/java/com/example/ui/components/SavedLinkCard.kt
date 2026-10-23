@@ -18,16 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -65,6 +55,16 @@ import com.example.ui.theme.UiSpacing
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Copy
+import com.composables.icons.lucide.EllipsisVertical
+import com.composables.icons.lucide.ExternalLink
+import com.composables.icons.lucide.Folder
+import com.composables.icons.lucide.Pencil
+import com.composables.icons.lucide.Star
+import com.composables.icons.lucide.Tags
+import com.composables.icons.lucide.Trash2
+import com.example.ui.icons.StarFilled
 
 /**
  * Saved-link card with reversible swipe actions:
@@ -125,13 +125,13 @@ fun SavedLinkCard(
             ) {
                 if (isDeleteSide) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = Lucide.Trash2,
                         contentDescription = "Удалить свайпом",
                         tint = contentColor
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Filled.Star,
+                        imageVector = StarFilled,
                         contentDescription = "В избранное свайпом",
                         tint = contentColor
                     )
@@ -181,7 +181,7 @@ fun SavedLinkCard(
                             },
                             error = {
                                 Icon(
-                                    imageVector = Icons.Default.Folder,
+                                    imageVector = Lucide.Folder,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(30.dp)
@@ -190,7 +190,7 @@ fun SavedLinkCard(
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Default.Folder,
+                            imageVector = Lucide.Folder,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(30.dp)
@@ -241,7 +241,7 @@ fun SavedLinkCard(
                     modifier = Modifier.size(40.dp).testTag("saved_link_favorite")
                 ) {
                     Icon(
-                        imageVector = if (link.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        imageVector = if (link.isFavorite) StarFilled else Lucide.Star,
                         contentDescription = "Избранное",
                         tint = if (link.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -253,7 +253,7 @@ fun SavedLinkCard(
                         modifier = Modifier.size(40.dp).testTag("saved_link_menu")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.MoreVert,
+                            imageVector = Lucide.EllipsisVertical,
                             contentDescription = "Ещё действия",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -264,7 +264,7 @@ fun SavedLinkCard(
                     ) {
                         DropdownMenuItem(
                             text = { Text("Открыть") },
-                            leadingIcon = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
+                            leadingIcon = { Icon(Lucide.ExternalLink, contentDescription = null) },
                             onClick = {
                                 menuExpanded = false
                                 onClick()
@@ -273,7 +273,7 @@ fun SavedLinkCard(
                         )
                         DropdownMenuItem(
                             text = { Text("Переименовать") },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                            leadingIcon = { Icon(Lucide.Pencil, contentDescription = null) },
                             onClick = {
                                 menuExpanded = false
                                 onRenameClick()
@@ -282,7 +282,7 @@ fun SavedLinkCard(
                         )
                         DropdownMenuItem(
                             text = { Text("Категория") },
-                            leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
+                            leadingIcon = { Icon(Lucide.Tags, contentDescription = null) },
                             onClick = {
                                 menuExpanded = false
                                 onCategoryClick()
@@ -291,7 +291,7 @@ fun SavedLinkCard(
                         )
                         DropdownMenuItem(
                             text = { Text("Копировать ссылку") },
-                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                            leadingIcon = { Icon(Lucide.Copy, contentDescription = null) },
                             onClick = {
                                 menuExpanded = false
                                 copyLinkToClipboard(context, link.url)
@@ -308,7 +308,7 @@ fun SavedLinkCard(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.Delete,
+                                    Lucide.Trash2,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.error
                                 )

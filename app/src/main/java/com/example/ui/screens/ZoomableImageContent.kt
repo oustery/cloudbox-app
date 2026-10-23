@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +43,8 @@ import coil.compose.AsyncImage
 import com.example.data.model.CloudItem
 import com.example.data.repository.ThumbnailSize
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Scan
 
 @Composable
 internal fun ZoomableImageContent(
@@ -170,7 +170,7 @@ internal fun ZoomableImageContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.FitScreen,
+                        imageVector = Lucide.Scan,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)

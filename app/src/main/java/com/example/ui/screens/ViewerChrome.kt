@@ -5,10 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +19,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.model.CloudItem
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Download
+import com.composables.icons.lucide.Share2
+import com.composables.icons.lucide.X
 
 @Composable
 internal fun MediaViewerTopBar(
@@ -49,7 +49,7 @@ internal fun MediaViewerTopBar(
                 onClick = onClose,
                 modifier = Modifier.testTag("media_viewer_close")
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = Color.White)
+                Icon(Lucide.X, contentDescription = "Закрыть", tint = Color.White)
             }
 
             Column(modifier = Modifier.weight(1f)) {
@@ -68,7 +68,7 @@ internal fun MediaViewerTopBar(
             }
 
             IconButton(onClick = onShare) {
-                Icon(Icons.Default.Share, contentDescription = "Поделиться", tint = Color.White)
+                Icon(Lucide.Share2, contentDescription = "Поделиться", tint = Color.White)
             }
 
             IconButton(
@@ -76,7 +76,7 @@ internal fun MediaViewerTopBar(
                 modifier = Modifier.testTag("media_viewer_download")
             ) {
                 Icon(
-                    Icons.Default.Download,
+                    Lucide.Download,
                     contentDescription = "Скачать",
                     tint = Color.White
                 )

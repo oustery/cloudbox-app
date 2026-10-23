@@ -19,10 +19,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +44,10 @@ import com.example.data.api.CloudUrlParser
 import com.example.data.model.CloudItem
 import com.example.ui.theme.UiMotionTokens
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.ArrowRight
+import com.composables.icons.lucide.Info
 
 @Composable
 fun MediaViewerScreen(
@@ -158,7 +158,7 @@ fun MediaViewerScreen(
                                     .background(Color(0x80000000), CircleShape)
                                     .testTag("media_prev")
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Предыдущий", tint = Color.White)
+                                Icon(Lucide.ArrowLeft, contentDescription = "Предыдущий", tint = Color.White)
                             }
                         }
                     }
@@ -177,7 +177,7 @@ fun MediaViewerScreen(
                                     .background(Color(0x80000000), CircleShape)
                                     .testTag("media_next")
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Следующий", tint = Color.White)
+                                Icon(Lucide.ArrowRight, contentDescription = "Следующий", tint = Color.White)
                             }
                         }
                     }
@@ -220,7 +220,7 @@ fun MediaViewerScreen(
                                 .padding(start = UiSpacing.medium)
                                 .background(Color(0x80000000), CircleShape)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Предыдущий", tint = Color.White)
+                            Icon(Lucide.ArrowLeft, contentDescription = "Предыдущий", tint = Color.White)
                         }
                     }
 
@@ -232,7 +232,7 @@ fun MediaViewerScreen(
                                 .padding(end = UiSpacing.medium)
                                 .background(Color(0x80000000), CircleShape)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Следующий", tint = Color.White)
+                            Icon(Lucide.ArrowRight, contentDescription = "Следующий", tint = Color.White)
                         }
                     }
 
@@ -255,7 +255,7 @@ fun MediaViewerScreen(
                                     modifier = Modifier.testTag("media_viewer_metadata_toggle")
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Info,
+                                        imageVector = Lucide.Info,
                                         contentDescription = if (showMetadata) "Скрыть сведения" else "Показать сведения",
                                         tint = Color.White
                                     )

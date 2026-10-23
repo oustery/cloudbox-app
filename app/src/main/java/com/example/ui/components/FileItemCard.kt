@@ -18,20 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AudioFile
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PlayCircleFilled
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.FolderZip
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -58,6 +44,16 @@ import com.example.data.model.CloudItem
 import com.example.ui.components.expressive.MorphingIconButton
 import com.example.ui.core.feedback.rememberHaptics
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.CircleCheck
+import com.composables.icons.lucide.Download
+import com.composables.icons.lucide.FileArchive
+import com.composables.icons.lucide.FileAudio
+import com.composables.icons.lucide.FileText
+import com.composables.icons.lucide.Film
+import com.composables.icons.lucide.Folder
+import com.composables.icons.lucide.Image
+import com.composables.icons.lucide.Play
 
 @Composable
 fun FileItemCard(
@@ -213,7 +209,7 @@ private fun FileGridItem(
                         .size(36.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = Lucide.Play,
                         contentDescription = "Видеофайл",
                         tint = Color.White,
                         modifier = Modifier.padding(UiSpacing.iconGap)
@@ -246,7 +242,7 @@ private fun FileGridItem(
             if (isSelectionMode) {
                 // Material 3 Expressive: the check morphs circle -> cookie on press.
                 MorphingIconButton(
-                    imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                    imageVector = if (isSelected) Lucide.CircleCheck else Lucide.CircleCheck,
                     contentDescription = if (isSelected) "Снять выделение" else "Выбрать файл",
                     containerColor = if (isSelected) Color.Transparent else Color(0x80000000),
                     contentColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
@@ -267,7 +263,7 @@ private fun FileGridItem(
                         .background(Color(0x80000000), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Download,
+                        imageVector = Lucide.Download,
                         contentDescription = "Скачать",
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
@@ -395,7 +391,7 @@ private fun FileListItem(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                        imageVector = if (isSelected) Lucide.CircleCheck else Lucide.CircleCheck,
                         contentDescription = if (isSelected) "Снять выделение" else "Выбрать файл",
                         tint = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -409,7 +405,7 @@ private fun FileListItem(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Download,
+                        imageVector = Lucide.Download,
                         contentDescription = "Скачать",
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -421,13 +417,13 @@ private fun FileListItem(
 
 fun getFileIcon(item: CloudItem): ImageVector {
     return when {
-        item.isFolder -> Icons.Default.Folder
-        item.isImage -> Icons.Default.Image
-        item.isVideo -> Icons.Default.VideoLibrary
-        item.isAudio -> Icons.Default.AudioFile
-        item.isArchive -> Icons.Default.FolderZip
-        item.isDocument -> Icons.Default.Description
-        else -> Icons.Default.Description
+        item.isFolder -> Lucide.Folder
+        item.isImage -> Lucide.Image
+        item.isVideo -> Lucide.Film
+        item.isAudio -> Lucide.FileAudio
+        item.isArchive -> Lucide.FileArchive
+        item.isDocument -> Lucide.FileText
+        else -> Lucide.FileText
     }
 }
 

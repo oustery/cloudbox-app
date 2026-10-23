@@ -37,22 +37,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -104,6 +88,23 @@ import com.example.ui.viewmodel.DownloadViewModel
 import com.example.ui.theme.StatusError
 import com.example.ui.theme.UiMotionTokens
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.ArrowUpDown
+import com.composables.icons.lucide.Check
+import com.composables.icons.lucide.CloudOff
+import com.composables.icons.lucide.FolderOpen
+import com.composables.icons.lucide.Inbox
+import com.composables.icons.lucide.ChevronDown
+import com.composables.icons.lucide.ChevronRight
+import com.composables.icons.lucide.Download
+import com.composables.icons.lucide.FolderX
+import com.composables.icons.lucide.LayoutGrid
+import com.composables.icons.lucide.List
+import com.composables.icons.lucide.RefreshCw
+import com.composables.icons.lucide.Search
+import com.composables.icons.lucide.SquareCheckBig
+import com.composables.icons.lucide.X
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -203,7 +204,7 @@ fun FolderExplorerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     MorphingIconButton(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = Lucide.ArrowLeft,
                         contentDescription = "Назад",
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = {
@@ -254,7 +255,7 @@ fun FolderExplorerScreen(
 
                     // Collapsible search toggle
                     MorphingIconButton(
-                        imageVector = Icons.Default.Search,
+                        imageVector = Lucide.Search,
                         contentDescription = "Поиск",
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = {
@@ -268,7 +269,7 @@ fun FolderExplorerScreen(
 
                     // Toggle Grid/List
                     MorphingIconButton(
-                        imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                        imageVector = if (isGridView) Lucide.List else Lucide.LayoutGrid,
                         contentDescription = "Сменить вид",
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = { viewModel.toggleGridView() },
@@ -277,7 +278,7 @@ fun FolderExplorerScreen(
 
                     Box {
                         MorphingIconButton(
-                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            imageVector = Lucide.ArrowUpDown,
                             contentDescription = "Сортировка: ${fileSortOrder.title}",
                             contentColor = MaterialTheme.colorScheme.onSurface,
                             onClick = { isSortMenuExpanded = true },
@@ -295,7 +296,7 @@ fun FolderExplorerScreen(
                                         isSortMenuExpanded = false
                                     },
                                     leadingIcon = if (fileSortOrder == order) {
-                                        { Icon(Icons.Default.Check, contentDescription = null) }
+                                        { Icon(Lucide.Check, contentDescription = null) }
                                     } else null,
                                     modifier = Modifier.testTag("explorer_sort_${order.name}")
                                 )
@@ -305,7 +306,7 @@ fun FolderExplorerScreen(
 
                     // Refresh
                     MorphingIconButton(
-                        imageVector = Icons.Default.Refresh,
+                        imageVector = Lucide.RefreshCw,
                         contentDescription = "Обновить",
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = {
@@ -341,7 +342,7 @@ fun FolderExplorerScreen(
                             )
                             if (!isLast) {
                                 Icon(
-                                    imageVector = Icons.Default.ChevronRight,
+                                    imageVector = Lucide.ChevronRight,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.size(16.dp)
@@ -375,11 +376,11 @@ fun FolderExplorerScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                     },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    leadingIcon = { Icon(Lucide.Search, contentDescription = null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { viewModel.setFileSearchQuery("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                                Icon(Lucide.X, contentDescription = "Очистить")
                             }
                         }
                     },
@@ -467,7 +468,7 @@ fun FolderExplorerScreen(
                     ContentStatePanel(
                         title = "Нет сохранённых ссылок",
                         message = "Откройте публичную ссылку на главном экране — её содержимое появится в общем пуле.",
-                        icon = Icons.Outlined.FolderOff,
+                        icon = Lucide.Inbox,
                         actionLabel = "На главную",
                         onAction = onBack,
                         modifier = Modifier.fillMaxSize()
@@ -478,7 +479,7 @@ fun FolderExplorerScreen(
                     ContentStatePanel(
                         title = "Не удалось загрузить содержимое",
                         message = "Ни одна из сохранённых ссылок не ответила. Проверьте интернет и повторите.",
-                        icon = Icons.Outlined.FolderOff,
+                        icon = Lucide.CloudOff,
                         actionLabel = "Повторить",
                         onAction = { viewModel.loadAllContent() },
                         modifier = Modifier.fillMaxSize()
@@ -489,7 +490,7 @@ fun FolderExplorerScreen(
                     ContentStatePanel(
                         title = "Не удалось открыть папку",
                         message = error.orEmpty(),
-                        icon = Icons.Outlined.FolderOff,
+                        icon = Lucide.FolderX,
                         actionLabel = "Повторить",
                         onAction = { viewModel.retryLastFolderLoad() },
                         modifier = Modifier.fillMaxSize()
@@ -508,7 +509,7 @@ fun FolderExplorerScreen(
                             "Содержимое сохранённых ссылок появится здесь."
                         else
                             "В этой папке пока нет файлов.",
-                        icon = Icons.Outlined.FolderOff,
+                        icon = Lucide.FolderOpen,
                         actionLabel = if (hasActiveFilter) "Сбросить фильтры" else null,
                         onAction = if (hasActiveFilter) {
                             {
@@ -699,7 +700,7 @@ private fun SelectionToolbarOverlay(
     ) {
         HorizontalFloatingToolbar(expanded = true) {
             MorphingIconButton(
-                imageVector = Icons.Default.Close,
+                imageVector = Lucide.X,
                 contentDescription = "Отмена",
                 onClick = onClose
             )
@@ -714,7 +715,7 @@ private fun SelectionToolbarOverlay(
             SplitButtonLayout(
                 leadingButton = {
                     SplitButtonDefaults.LeadingButton(onClick = onDownloadSelected) {
-                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Lucide.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(UiSpacing.iconGap))
                         Text("Скачать", fontWeight = FontWeight.Bold)
                     }
@@ -724,7 +725,7 @@ private fun SelectionToolbarOverlay(
                         checked = downloadMenuExpanded.value,
                         onCheckedChange = { downloadMenuExpanded.value = it }
                     ) {
-                        Icon(Icons.Default.ExpandMore, contentDescription = "Ещё действия")
+                        Icon(Lucide.ChevronDown, contentDescription = "Ещё действия")
                     }
                     DropdownMenu(
                         expanded = downloadMenuExpanded.value,
@@ -732,7 +733,7 @@ private fun SelectionToolbarOverlay(
                     ) {
                         DropdownMenuItem(
                             text = { Text("Выбрать все") },
-                            leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
+                            leadingIcon = { Icon(Lucide.SquareCheckBig, contentDescription = null) },
                             onClick = {
                                 onSelectAll()
                                 downloadMenuExpanded.value = false
@@ -740,7 +741,7 @@ private fun SelectionToolbarOverlay(
                         )
                         DropdownMenuItem(
                             text = { Text("Снять выделение") },
-                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) },
+                            leadingIcon = { Icon(Lucide.X, contentDescription = null) },
                             onClick = {
                                 onClearSelection()
                                 downloadMenuExpanded.value = false

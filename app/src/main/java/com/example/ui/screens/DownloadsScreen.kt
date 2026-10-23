@@ -25,22 +25,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ClearAll
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.DownloadDone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -89,6 +73,21 @@ import com.example.ui.viewmodel.DownloadSortOrder
 import com.example.ui.viewmodel.DownloadViewModel
 import java.io.File
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ArrowUpDown
+import com.composables.icons.lucide.Check
+import com.composables.icons.lucide.CircleAlert
+import com.composables.icons.lucide.CircleCheck
+import com.composables.icons.lucide.Download
+import com.composables.icons.lucide.ExternalLink
+import com.composables.icons.lucide.File
+import com.composables.icons.lucide.Inbox
+import com.composables.icons.lucide.ListX
+import com.composables.icons.lucide.Pause
+import com.composables.icons.lucide.Play
+import com.composables.icons.lucide.RefreshCw
+import com.composables.icons.lucide.Search
+import com.composables.icons.lucide.X
 
 @Composable
 fun DownloadsScreen(
@@ -155,7 +154,7 @@ fun DownloadsScreen(
                         modifier = Modifier.testTag("downloads_sort_button")
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            imageVector = Lucide.ArrowUpDown,
                             contentDescription = "Сортировка: ${sortOrder.title}",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -172,7 +171,7 @@ fun DownloadsScreen(
                                     isSortMenuExpanded = false
                                 },
                                 leadingIcon = if (sortOrder == order) {
-                                    { Icon(Icons.Default.Check, contentDescription = null) }
+                                    { Icon(Lucide.Check, contentDescription = null) }
                                 } else null,
                                 modifier = Modifier.testTag("downloads_sort_${order.name}")
                             )
@@ -186,7 +185,7 @@ fun DownloadsScreen(
                         modifier = Modifier.testTag("clear_completed_downloads")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ClearAll,
+                            imageVector = Lucide.ListX,
                             contentDescription = "Очистить завершенные",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -210,7 +209,7 @@ fun DownloadsScreen(
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = Lucide.Search,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -218,7 +217,7 @@ fun DownloadsScreen(
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Очистить поиск")
+                            Icon(Lucide.X, contentDescription = "Очистить поиск")
                         }
                     }
                 },
@@ -273,7 +272,7 @@ fun DownloadsScreen(
                         "Файлы, которые вы скачиваете из облака, появятся здесь."
                     else
                         "Когда появятся загрузки в этой категории, они будут показаны здесь.",
-                    icon = Icons.Outlined.DownloadDone,
+                    icon = Lucide.Inbox,
                     actionLabel = if (activeTab != "Все") "Показать все" else null,
                     onAction = if (activeTab != "Все") {
                         { viewModel.setFilter("Все") }
@@ -388,11 +387,11 @@ private fun DownloadItemCard(
                 ) {
                     Icon(
                         imageVector = when (statusEnum) {
-                            DownloadStatus.COMPLETED -> Icons.Default.CheckCircle
-                            DownloadStatus.DOWNLOADING -> Icons.Default.Download
-                            DownloadStatus.PAUSED -> Icons.Default.Pause
-                            DownloadStatus.FAILED -> Icons.Default.Error
-                            else -> Icons.AutoMirrored.Filled.InsertDriveFile
+                            DownloadStatus.COMPLETED -> Lucide.CircleCheck
+                            DownloadStatus.DOWNLOADING -> Lucide.Download
+                            DownloadStatus.PAUSED -> Lucide.Pause
+                            DownloadStatus.FAILED -> Lucide.CircleAlert
+                            else -> Lucide.File
                         },
                         contentDescription = null,
                         tint = when (statusEnum) {
@@ -440,26 +439,26 @@ private fun DownloadItemCard(
                 when (statusEnum) {
                     DownloadStatus.DOWNLOADING -> {
                         IconButton(onClick = onPause) {
-                            Icon(Icons.Default.Pause, contentDescription = "Пауза", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Lucide.Pause, contentDescription = "Пауза", tint = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(onClick = onCancel) {
-                            Icon(Icons.Default.Close, contentDescription = "Отмена")
+                            Icon(Lucide.X, contentDescription = "Отмена")
                         }
                     }
                     DownloadStatus.PAUSED -> {
                         IconButton(onClick = onResume) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Возобновить", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Lucide.Play, contentDescription = "Возобновить", tint = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(onClick = onCancel) {
-                            Icon(Icons.Default.Close, contentDescription = "Отмена")
+                            Icon(Lucide.X, contentDescription = "Отмена")
                         }
                     }
                     DownloadStatus.FAILED -> {
                         IconButton(onClick = onResume) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Повторить", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Lucide.RefreshCw, contentDescription = "Повторить", tint = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(onClick = onCancel) {
-                            Icon(Icons.Default.Close, contentDescription = "Удалить")
+                            Icon(Lucide.X, contentDescription = "Удалить")
                         }
                     }
                     DownloadStatus.COMPLETED -> {
@@ -469,16 +468,16 @@ private fun DownloadItemCard(
                                     openDownloadedFile(context, task.destinationPath)
                                 }
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Открыть", tint = MaterialTheme.colorScheme.primary)
+                                Icon(Lucide.ExternalLink, contentDescription = "Открыть", tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                         IconButton(onClick = onCancel) {
-                            Icon(Icons.Default.Close, contentDescription = "Удалить из списка")
+                            Icon(Lucide.X, contentDescription = "Удалить из списка")
                         }
                     }
                     else -> {
                         IconButton(onClick = onCancel) {
-                            Icon(Icons.Default.Close, contentDescription = "Отмена")
+                            Icon(Lucide.X, contentDescription = "Отмена")
                         }
                     }
                 }

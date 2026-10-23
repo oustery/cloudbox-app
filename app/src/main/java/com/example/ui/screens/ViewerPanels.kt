@@ -14,9 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +35,9 @@ import coil.request.ImageRequest
 import com.example.data.model.CloudItem
 import com.example.data.repository.ThumbnailSize
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Download
+import com.composables.icons.lucide.ExternalLink
 
 @Composable
 internal fun VideoErrorPanel(
@@ -76,12 +76,12 @@ internal fun VideoErrorPanel(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(UiSpacing.medium)) {
                 androidx.compose.material3.OutlinedButton(onClick = onDownload) {
-                    Icon(Icons.Default.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Lucide.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(UiSpacing.iconGap))
                     Text("Скачать", color = Color.White)
                 }
                 androidx.compose.material3.OutlinedButton(onClick = onOpenExternal) {
-                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Lucide.ExternalLink, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(UiSpacing.iconGap))
                     Text("Внешний плеер", color = Color.White)
                 }
