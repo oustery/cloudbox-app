@@ -55,6 +55,11 @@ class CloudMailRuRepository(
 
     val allSavedLinks: Flow<List<SavedLinkEntity>> = savedLinkDao.getAllSavedLinks()
 
+    /** One-shot snapshot of all saved links (for the unified content pool). */
+    suspend fun getSavedLinksOnce(): List<SavedLinkEntity> = withContext(Dispatchers.IO) {
+        savedLinkDao.getAllSavedLinksOnce()
+    }
+
     suspend fun saveLink(
         url: String,
         title: String,

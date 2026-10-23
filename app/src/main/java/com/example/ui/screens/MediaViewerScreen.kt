@@ -185,7 +185,9 @@ fun MediaViewerScreen(
     val context = LocalContext.current
     val activity = context.findActivity()
     val currentFolder by viewModel.currentFolder.collectAsStateWithLifecycle()
-    val mediaItems = currentFolder?.items?.filter { it.isImage || it.isVideo }.orEmpty()
+    // Playlist-aware: when the viewer was opened from the unified "Все файлы"
+    // pool, this returns the merged pool playlist instead of one folder's media.
+    val mediaItems = viewModel.getActiveMediaItems()
     val currentMediaIndex = mediaItems.indexOfFirst { it.weblink == item.weblink }
     val hasPreviousMedia = currentMediaIndex > 0
     val hasNextMedia = currentMediaIndex >= 0 && currentMediaIndex < mediaItems.lastIndex
@@ -393,7 +395,7 @@ fun MediaViewerScreen(
                 MediaFilmstripPanel(
                     items = mediaItems,
                     currentItem = item,
-                    folderTitle = currentFolder?.name ?: "Папка",
+                    folderTitle = currentFolder?.name ?: "Все файлы",
                     viewModel = viewModel,
                     modifier = Modifier.width(300.dp).fillMaxHeight()
                 )
@@ -1205,7 +1207,7 @@ private fun MediaFilmstripPanel(
                             .selectable(
                                 selected = isCurrent,
                                 role = androidx.compose.ui.semantics.Role.Button,
-                                onClick = { viewModel.openMediaViewer(mediaItem) }
+                                onClick = { viewModel.selectMediaInPlaylist(mediaItem) }
                             )
                             .padding(UiSpacing.small),
                         verticalAlignment = Alignment.CenterVertically

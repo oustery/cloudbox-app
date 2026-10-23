@@ -125,21 +125,39 @@ data class CloudItem(
 
 enum class CloudItemSortOrder(val title: String) {
     DATE_NEWEST("Дата: сначала новые"),
+    DATE_OLDEST("Дата: сначала старые"),
+    NAME_AZ("Имя: А–Я"),
+    NAME_ZA("Имя: Я–А"),
     SIZE_LARGEST("Размер: сначала большие"),
+    SIZE_SMALLEST("Размер: сначала маленькие"),
     DURATION_LONGEST("Длительность: сначала длинные")
 }
 
-fun List<CloudItem>.sortedBy(order: CloudItemSortOrder): List<CloudItem> = when (order) {
-    CloudItemSortOrder.DATE_NEWEST -> sortedWith(
-        compareByDescending<CloudItem> { it.mtime }.thenBy { it.name.lowercase(Locale.ROOT) }
-    )
-    CloudItemSortOrder.SIZE_LARGEST -> sortedWith(
-        compareByDescending<CloudItem> { it.size }.thenBy { it.name.lowercase(Locale.ROOT) }
-    )
-    CloudItemSortOrder.DURATION_LONGEST -> sortedWith(
-        compareBy<CloudItem> { it.mediaDurationSeconds == null }
+/**
+ * Folders always come first (canonical file-manager behaviour); files inside
+ * each group follow the chosen order. Unknown values (mtime = 0, size = 0)
+ * sink to the tail of their group instead of polluting the top of the list.
+ */
+fun List<CloudItem>.sortedBy(order: CloudItemSortOrder): List<CloudItem> {
+    val fileComparator: Comparator<CloudItem> = when (order) {
+        CloudItemSortOrder.DATE_NEWEST -> compareByDescending<CloudItem> { it.mtime }
+            .thenBy { it.name.lowercase(Locale.ROOT) }
+        CloudItemSortOrder.DATE_OLDEST -> compareBy<CloudItem> { it.mtime <= 0L }
+            .thenBy { it.mtime }
+            .thenBy { it.name.lowercase(Locale.ROOT) }
+        CloudItemSortOrder.NAME_AZ -> compareBy<CloudItem> { it.name.lowercase(Locale.ROOT) }
+        CloudItemSortOrder.NAME_ZA -> compareByDescending<CloudItem> { it.name.lowercase(Locale.ROOT) }
+        CloudItemSortOrder.SIZE_LARGEST -> compareByDescending<CloudItem> { it.size }
+            .thenBy { it.name.lowercase(Locale.ROOT) }
+        CloudItemSortOrder.SIZE_SMALLEST -> compareBy<CloudItem> { it.size <= 0L }
+            .thenBy { it.size }
+            .thenBy { it.name.lowercase(Locale.ROOT) }
+        CloudItemSortOrder.DURATION_LONGEST -> compareBy<CloudItem> { it.mediaDurationSeconds == null }
             .thenByDescending { it.mediaDurationSeconds ?: Long.MIN_VALUE }
             .thenBy { it.name.lowercase(Locale.ROOT) }
+    }
+    return sortedWith(
+        compareBy<CloudItem> { !it.isFolder }.then(fileComparator)
     )
 }
 

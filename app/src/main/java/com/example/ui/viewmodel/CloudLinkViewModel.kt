@@ -10,6 +10,9 @@ import com.example.data.model.CloudItemSortOrder
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
 import com.example.data.repository.ThumbnailSize
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +24,17 @@ import kotlinx.coroutines.launch
 data class FolderStackEntry(
     val title: String,
     val weblink: String
+)
+
+/**
+ * One entry of the unified "Все файлы" pool: a cloud item plus the saved link
+ * it came from. [sourceTitle]/[sourceWeblinkKey] are null when the entry is
+ * shown inside a regular single-folder listing.
+ */
+data class AggregatedEntry(
+    val item: CloudItem,
+    val sourceTitle: String? = null,
+    val sourceWeblinkKey: String? = null
 )
 
 class CloudLinkViewModel(
@@ -101,6 +115,28 @@ class CloudLinkViewModel(
     /** Last playback position per video weblink, used to resume where the user left off. */
     private val videoResumePositions = mutableMapOf<String, Long>()
 
+    // Unified pool: content of every saved link merged into one list
+    private val _aggregatedEntries = MutableStateFlow<List<AggregatedEntry>>(emptyList())
+    val aggregatedEntries: StateFlow<List<AggregatedEntry>> = _aggregatedEntries.asStateFlow()
+
+    private val _isLoadingAggregated = MutableStateFlow(false)
+    val isLoadingAggregated: StateFlow<Boolean> = _isLoadingAggregated.asStateFlow()
+
+    /** Saved links whose content could not be loaded during the last pool refresh. */
+    private val _aggregatedFailedCount = MutableStateFlow(0)
+    val aggregatedFailedCount: StateFlow<Int> = _aggregatedFailedCount.asStateFlow()
+
+    /** Total number of saved links known at the moment of the last pool refresh. */
+    private val _savedLinksTotal = MutableStateFlow(0)
+    val savedLinksTotal: StateFlow<Int> = _savedLinksTotal.asStateFlow()
+
+    /** True when links changed (added/removed) and the pool must be reloaded. */
+    @Volatile
+    private var poolDirty: Boolean = true
+
+    /** Media playlist override: used when the viewer is opened from the pool. */
+    private val _mediaPlaylist = MutableStateFlow<List<CloudItem>?>(null)
+
     init {
         // Pre-warm dispatcher shards
         viewModelScope.launch {
@@ -141,7 +177,8 @@ class CloudLinkViewModel(
         _fileSortOrder.value = order
     }
 
-    fun openMediaViewer(item: CloudItem) {
+    fun openMediaViewer(item: CloudItem, playlist: List<CloudItem>? = null) {
+        _mediaPlaylist.value = playlist
         _activeMediaItem.value = item
     }
 
@@ -167,7 +204,16 @@ class CloudLinkViewModel(
         }
     }
 
+    /** Media (image/video) items of the active context: playlist override, else the open folder. */
+    fun getActiveMediaItems(): List<CloudItem> = getMediaOnlyItems()
+
+    /** Switches the viewer to another item WITHOUT resetting the active playlist. */
+    fun selectMediaInPlaylist(item: CloudItem) {
+        _activeMediaItem.value = item
+    }
+
     private fun getMediaOnlyItems(): List<CloudItem> {
+        _mediaPlaylist.value?.let { return it }
         val all = _currentFolder.value?.items ?: emptyList()
         return all.filter { it.isImage || it.isVideo }
     }
@@ -207,6 +253,8 @@ class CloudLinkViewModel(
                     }
                 }
 
+                poolDirty = true
+
                 // Auto-save to library if this is the root folder
                 val firstImage = folderResult.items.firstOrNull { it.isImage }
                 val thumbUrl = firstImage?.let { repository.getThumbnailUrl(it.weblink, ThumbnailSize.HIGH_RES) }
@@ -228,6 +276,77 @@ class CloudLinkViewModel(
         lastRequestedWeblink?.let { loadFolder(it, resetStack = lastRequestResetStack) }
     }
 
+    /**
+     * Opens a folder straight from the unified pool: resets the pool-scoped
+     * search/filter so stale conditions don't leak into the folder view.
+     */
+    fun openFromPool(weblink: String) {
+        _fileSearchQuery.value = ""
+        _fileTypeFilter.value = "Все"
+        loadFolder(weblink, resetStack = false)
+    }
+
+    /** Closes the open folder and returns the explorer to the unified pool. */
+    fun closeFolder() {
+        _currentFolder.value = null
+        _folderBreadcrumbs.value = emptyList()
+        _selectedItems.value = emptySet()
+        _isSelectionMode.value = false
+        _fileSearchQuery.value = ""
+        _fileTypeFilter.value = "Все"
+    }
+
+    /**
+     * Loads the root content of EVERY saved link in parallel and merges it into
+     * one unified pool. Partial failures are tolerated: successful links are
+     * shown, failed ones are counted in [aggregatedFailedCount].
+     */
+    fun loadAllContent() {
+        if (_isLoadingAggregated.value) return
+        viewModelScope.launch {
+            _isLoadingAggregated.value = true
+            _aggregatedFailedCount.value = 0
+            poolDirty = false
+            val links = repository.getSavedLinksOnce()
+            _savedLinksTotal.value = links.size
+            if (links.isEmpty()) {
+                _aggregatedEntries.value = emptyList()
+                _isLoadingAggregated.value = false
+                return@launch
+            }
+            val results = coroutineScope {
+                links.map { link ->
+                    async { link to runCatching { repository.fetchFolderContent(link.weblinkKey) } }
+                }.awaitAll()
+            }
+            val entries = mutableListOf<AggregatedEntry>()
+            var failed = 0
+            results.forEach { (link, result) ->
+                result.onSuccess { folder ->
+                    folder.items.forEach { item ->
+                        entries.add(AggregatedEntry(item, link.title, link.weblinkKey))
+                    }
+                }.onFailure { failed++ }
+            }
+            _aggregatedEntries.value = entries.distinctBy { it.item.weblink }
+            _aggregatedFailedCount.value = failed
+            _isLoadingAggregated.value = false
+        }
+    }
+
+    /** Whether the explorer should kick off an automatic pool load right now. */
+    fun shouldAutoLoadPool(): Boolean =
+        _currentFolder.value == null && !_isLoadingAggregated.value &&
+                (poolDirty || _aggregatedEntries.value.isEmpty())
+
+    /** Items of the currently active context (open folder or the unified pool). */
+    private fun activeItems(): List<CloudItem> =
+        _currentFolder.value?.items ?: _aggregatedEntries.value.map { it.item }
+
+    /** Maps a set of selected weblinks back to cloud items for batch download. */
+    fun getItemsByWeblinks(weblinks: Set<String>): List<CloudItem> =
+        activeItems().filter { weblinks.contains(it.weblink) && !it.isFolder }
+
     fun navigateToBreadcrumb(entry: FolderStackEntry) {
         val currentCrumbs = _folderBreadcrumbs.value
         val index = currentCrumbs.indexOf(entry)
@@ -244,8 +363,8 @@ class CloudLinkViewModel(
             navigateToBreadcrumb(target)
             true
         } else {
-            _currentFolder.value = null
-            _folderBreadcrumbs.value = emptyList()
+            // At the root: drop to the unified pool (keeps explorer visible)
+            closeFolder()
             false
         }
     }
@@ -259,6 +378,7 @@ class CloudLinkViewModel(
     fun deleteSavedLink(id: Long) {
         viewModelScope.launch {
             repository.deleteLink(id)
+            poolDirty = true
         }
     }
 
@@ -274,7 +394,7 @@ class CloudLinkViewModel(
     }
 
     fun selectAllFiles() {
-        val allFiles = _currentFolder.value?.items?.filter { !it.isFolder } ?: emptyList()
+        val allFiles = activeItems().filter { !it.isFolder }
         _selectedItems.value = allFiles.map { it.weblink }.toSet()
         _isSelectionMode.value = allFiles.isNotEmpty()
     }
