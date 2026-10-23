@@ -65,9 +65,11 @@ import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,15 +87,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CloudItem
 import com.example.data.model.CloudItemSortOrder
-import com.example.data.model.sortedBy
+import com.example.data.model.cloudItemComparator
 import com.example.data.repository.ThumbnailSize
 import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.FileItemCard
 import com.example.ui.components.ContentStatePanel
 import com.example.ui.components.FolderSkeletonPlaceholder
 import com.example.ui.components.expressive.MorphingIconButton
+import com.example.ui.viewmodel.AggregatedEntry
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.viewmodel.DownloadViewModel
+import com.example.ui.theme.StatusError
 import com.example.ui.theme.UiMotionTokens
 import com.example.ui.theme.UiSpacing
 
@@ -117,23 +121,48 @@ fun FolderExplorerScreen(
     val selectedItems by viewModel.selectedItems.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
     val fileSortOrder by viewModel.fileSortOrder.collectAsStateWithLifecycle()
+    val aggregatedEntries by viewModel.aggregatedEntries.collectAsStateWithLifecycle()
+    val isLoadingAggregated by viewModel.isLoadingAggregated.collectAsStateWithLifecycle()
+    val aggregatedFailedCount by viewModel.aggregatedFailedCount.collectAsStateWithLifecycle()
+    val savedLinksTotal by viewModel.savedLinksTotal.collectAsStateWithLifecycle()
     var isSortMenuExpanded by remember { mutableStateOf(false) }
 
-    // Android predictive back handler
-    BackHandler {
-        if (isSelectionMode) {
-            viewModel.clearSelection()
-        } else if (!viewModel.navigateBack()) {
-            onBack()
+    // Unified pool mode: the explorer shows the merged content of every saved
+    // link whenever no specific folder is open.
+    val isAggregated = currentFolder == null
+
+    // Auto-load the pool when entering the explorer without an open folder.
+    LaunchedEffect(currentFolder) {
+        if (viewModel.shouldAutoLoadPool()) {
+            viewModel.loadAllContent()
         }
     }
 
-    val filterChips = listOf("Все", "Фото", "Видео", "Документы", "Архивы")
+    // Android predictive back handler: selection -> up one level -> pool -> home
+    BackHandler {
+        when {
+            isSelectionMode -> viewModel.clearSelection()
+            currentFolder != null -> viewModel.navigateBack()
+            else -> onBack()
+        }
+    }
 
-    val filteredItems = (currentFolder?.items ?: emptyList()).filter { item ->
+    val filterChips = listOf("Все", "Фото", "Видео", "Аудио", "Документы", "Архивы")
+
+    // In folder mode entries carry no source; in pool mode each item remembers
+    // which saved link it came from.
+    val sourceEntries: List<AggregatedEntry> = if (isAggregated) {
+        aggregatedEntries
+    } else {
+        currentFolder?.items?.map { AggregatedEntry(item = it) } ?: emptyList()
+    }
+
+    val filteredEntries = sourceEntries.filter { entry ->
+        val item = entry.item
         val matchesFilter = when (fileFilter) {
             "Фото" -> item.isImage
             "Видео" -> item.isVideo
+            "Аудио" -> item.isAudio
             "Документы" -> item.isDocument
             "Архивы" -> item.isArchive
             else -> true
@@ -142,7 +171,13 @@ fun FolderExplorerScreen(
             item.name.contains(searchQuery, ignoreCase = true)
         }
         matchesFilter && matchesQuery
-    }.sortedBy(fileSortOrder)
+    }.let { list ->
+        val orderComparator = cloudItemComparator(fileSortOrder)
+        list.sortedWith(
+            compareBy<AggregatedEntry> { !it.item.isFolder }
+                .thenComparator { a, b -> orderComparator.compare(a.item, b.item) }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -167,8 +202,9 @@ fun FolderExplorerScreen(
                         contentDescription = "Назад",
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = {
-                            if (!viewModel.navigateBack()) {
-                                onBack()
+                            when {
+                                currentFolder != null -> viewModel.navigateBack()
+                                else -> onBack()
                             }
                         },
                         modifier = Modifier.testTag("explorer_back_button")
@@ -176,13 +212,26 @@ fun FolderExplorerScreen(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = currentFolder?.name ?: "Проводник",
+                            text = if (isAggregated) "Все файлы" else currentFolder?.name ?: "Проводник",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (currentFolder?.items != null) {
+                        if (isAggregated) {
+                            val distinctSources = aggregatedEntries.mapNotNull { it.sourceWeblinkKey }.distinct().size
+                            Text(
+                                text = when {
+                                    isLoadingAggregated -> "Загрузка содержимого ссылок…"
+                                    savedLinksTotal == 0 -> "Нет сохранённых ссылок"
+                                    else -> "$distinctSources ссылок • ${aggregatedEntries.size} файлов"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else if (currentFolder?.items != null) {
                             val countFiles = currentFolder!!.items.count { !it.isFolder }
                             val countFolders = currentFolder!!.items.count { it.isFolder }
                             Text(
@@ -236,7 +285,12 @@ fun FolderExplorerScreen(
                         contentDescription = "Обновить",
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = {
-                            currentFolder?.weblinkKey?.let { viewModel.loadFolder(it, resetStack = false) }
+                            val folder = currentFolder
+                            if (folder != null) {
+                                viewModel.loadFolder(folder.weblinkKey, resetStack = false)
+                            } else {
+                                viewModel.loadAllContent()
+                            }
                         },
                         modifier = Modifier.testTag("refresh_folder")
                     )
@@ -286,7 +340,7 @@ fun FolderExplorerScreen(
                 onValueChange = { viewModel.setFileSearchQuery(it) },
                 placeholder = {
                     Text(
-                        "Поиск в папке",
+                        if (isAggregated) "Поиск во всех файлах" else "Поиск в папке",
                         maxLines = 1,
                         softWrap = false,
                         overflow = TextOverflow.Ellipsis
@@ -331,20 +385,71 @@ fun FolderExplorerScreen(
             }
         }
 
+        // Partial pool failures note: some links failed, but content is shown
+        if (isAggregated && aggregatedFailedCount > 0 && aggregatedEntries.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = UiSpacing.large, vertical = UiSpacing.extraSmall),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Не удалось загрузить ссылок: $aggregatedFailedCount",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = StatusError,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = { viewModel.loadAllContent() }) {
+                    Text("Повторить")
+                }
+            }
+        }
+
         // Main Content Area
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            val isInitialLoad = isLoading && currentFolder == null
-            val isRefreshing = isLoading && currentFolder != null
+            val isInitialLoad = !isAggregated && isLoading && currentFolder == null
+            val isRefreshingFolder = isLoading && currentFolder != null
+            val isRefreshingPool = isAggregated && isLoadingAggregated
             when {
                 isInitialLoad -> {
                     // Skeleton placeholders instead of a dead spinner: the
                     // layout is visible before the first byte arrives.
                     FolderSkeletonPlaceholder(
                         isGrid = isGridView,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                isAggregated && isRefreshingPool && aggregatedEntries.isEmpty() -> {
+                    // First pool load: skeleton grid while every link is fetched.
+                    FolderSkeletonPlaceholder(
+                        isGrid = isGridView,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                isAggregated && !isLoadingAggregated && savedLinksTotal == 0 -> {
+                    ContentStatePanel(
+                        title = "Нет сохранённых ссылок",
+                        message = "Откройте публичную ссылку на главном экране — её содержимое появится в общем пуле.",
+                        icon = Icons.Outlined.FolderOff,
+                        actionLabel = "На главную",
+                        onAction = onBack,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                isAggregated && !isLoadingAggregated && aggregatedEntries.isEmpty() && aggregatedFailedCount > 0 -> {
+                    ContentStatePanel(
+                        title = "Не удалось загрузить содержимое",
+                        message = "Ни одна из сохранённых ссылок не ответила. Проверьте интернет и повторите.",
+                        icon = Icons.Outlined.FolderOff,
+                        actionLabel = "Повторить",
+                        onAction = { viewModel.loadAllContent() },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -360,12 +465,16 @@ fun FolderExplorerScreen(
                     )
                 }
 
-                filteredItems.isEmpty() -> {
+                filteredEntries.isEmpty() -> {
                     val hasActiveFilter = searchQuery.isNotBlank() || fileFilter != "Все"
                     ContentStatePanel(
-                        title = if (hasActiveFilter) "Ничего не найдено" else "Папка пуста",
+                        title = if (hasActiveFilter) "Ничего не найдено"
+                        else if (isAggregated) "В пуле пока нет файлов"
+                        else "Папка пуста",
                         message = if (hasActiveFilter)
                             "Измените запрос или сбросьте выбранные фильтры."
+                        else if (isAggregated)
+                            "Содержимое сохранённых ссылок появится здесь."
                         else
                             "В этой папке пока нет файлов.",
                         icon = Icons.Outlined.FolderOff,
@@ -382,10 +491,13 @@ fun FolderExplorerScreen(
 
                 else -> {
                     PullToRefreshBox(
-                        isRefreshing = isRefreshing,
+                        isRefreshing = if (isAggregated) isRefreshingPool else isRefreshingFolder,
                         onRefresh = {
-                            currentFolder?.weblinkKey?.let {
-                                viewModel.loadFolder(it, resetStack = false)
+                            val folder = currentFolder
+                            if (folder != null) {
+                                viewModel.loadFolder(folder.weblinkKey, resetStack = false)
+                            } else {
+                                viewModel.loadAllContent()
                             }
                         },
                         modifier = Modifier.fillMaxSize()
@@ -398,7 +510,8 @@ fun FolderExplorerScreen(
                                 verticalArrangement = Arrangement.spacedBy(UiSpacing.medium),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(filteredItems, key = { it.weblink }) { item ->
+                                items(filteredEntries, key = { it.item.weblink }) { entry ->
+                                    val item = entry.item
                                     val isSelected = selectedItems.contains(item.weblink)
 
                                     FileItemCard(
@@ -411,13 +524,23 @@ fun FolderExplorerScreen(
                                         isGrid = true,
                                         isSelected = isSelected,
                                         isSelectionMode = isSelectionMode,
+                                        sourceLabel = entry.sourceTitle,
                                         onClick = {
                                             if (isSelectionMode) {
                                                 viewModel.toggleItemSelection(item.weblink)
                                             } else if (item.isFolder) {
-                                                viewModel.loadFolder(item.weblink, resetStack = false)
+                                                if (isAggregated) {
+                                                    viewModel.openFromPool(item.weblink)
+                                                } else {
+                                                    viewModel.loadFolder(item.weblink, resetStack = false)
+                                                }
                                             } else if (item.isImage || item.isVideo) {
-                                                viewModel.openMediaViewer(item)
+                                                viewModel.openMediaViewer(
+                                                    item,
+                                                    playlist = if (isAggregated) {
+                                                        filteredEntries.map { it.item }.filter { it.isImage || it.isVideo }
+                                                    } else null
+                                                )
                                             } else {
                                                 downloadViewModel.downloadItem(item)
                                             }
@@ -437,7 +560,8 @@ fun FolderExplorerScreen(
                                 verticalArrangement = Arrangement.spacedBy(UiSpacing.small),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(filteredItems, key = { it.weblink }) { item ->
+                                items(filteredEntries, key = { it.item.weblink }) { entry ->
+                                    val item = entry.item
                                     val isSelected = selectedItems.contains(item.weblink)
 
                                     FileItemCard(
@@ -447,13 +571,23 @@ fun FolderExplorerScreen(
                                         isGrid = false,
                                         isSelected = isSelected,
                                         isSelectionMode = isSelectionMode,
+                                        sourceLabel = entry.sourceTitle,
                                         onClick = {
                                             if (isSelectionMode) {
                                                 viewModel.toggleItemSelection(item.weblink)
                                             } else if (item.isFolder) {
-                                                viewModel.loadFolder(item.weblink, resetStack = false)
+                                                if (isAggregated) {
+                                                    viewModel.openFromPool(item.weblink)
+                                                } else {
+                                                    viewModel.loadFolder(item.weblink, resetStack = false)
+                                                }
                                             } else if (item.isImage || item.isVideo) {
-                                                viewModel.openMediaViewer(item)
+                                                viewModel.openMediaViewer(
+                                                    item,
+                                                    playlist = if (isAggregated) {
+                                                        filteredEntries.map { it.item }.filter { it.isImage || it.isVideo }
+                                                    } else null
+                                                )
                                             } else {
                                                 downloadViewModel.downloadItem(item)
                                             }
@@ -481,9 +615,7 @@ fun FolderExplorerScreen(
                 onSelectAll = { viewModel.selectAllFiles() },
                 onClearSelection = { viewModel.clearSelection() },
                 onDownloadSelected = {
-                    val itemsToDownload = (currentFolder?.items ?: emptyList()).filter {
-                        selectedItems.contains(it.weblink) && !it.isFolder
-                    }
+                    val itemsToDownload = viewModel.getItemsByWeblinks(selectedItems)
                     downloadViewModel.downloadBatch(itemsToDownload)
                     viewModel.clearSelection()
                 },

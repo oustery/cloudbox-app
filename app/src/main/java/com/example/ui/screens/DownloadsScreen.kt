@@ -23,10 +23,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
@@ -34,27 +39,37 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.DownloadDone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.example.ui.components.expressive.WavyLinearProgress
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,6 +82,7 @@ import com.example.ui.components.ContentStatePanel
 import com.example.ui.theme.StatusError
 import com.example.ui.theme.StatusSuccess
 import com.example.ui.theme.StatusWarning
+import com.example.ui.viewmodel.DownloadSortOrder
 import com.example.ui.viewmodel.DownloadViewModel
 import java.io.File
 import com.example.ui.theme.UiSpacing
@@ -79,7 +95,12 @@ fun DownloadsScreen(
 ) {
     val downloads by viewModel.downloads.collectAsStateWithLifecycle()
     val activeTab by viewModel.tabFilter.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
+    val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
     val tabs = listOf("Все", "В процессе", "Завершено", "С ошибками")
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var isSortMenuExpanded by remember { mutableStateOf(false) }
 
     BackHandler {
         onBack()
@@ -112,12 +133,46 @@ fun DownloadsScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Показано загрузок: ${downloads.size}",
+                        text = if (searchQuery.isNotBlank() || activeTab != "Все")
+                            "Показано: ${downloads.size} из $totalCount"
+                        else
+                            "Всего загрузок: $totalCount",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+
+                Box {
+                    IconButton(
+                        onClick = { isSortMenuExpanded = true },
+                        modifier = Modifier.testTag("downloads_sort_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            contentDescription = "Сортировка: ${sortOrder.title}",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = isSortMenuExpanded,
+                        onDismissRequest = { isSortMenuExpanded = false }
+                    ) {
+                        DownloadSortOrder.entries.forEach { order ->
+                            DropdownMenuItem(
+                                text = { Text(order.title) },
+                                onClick = {
+                                    viewModel.setSortOrder(order)
+                                    isSortMenuExpanded = false
+                                },
+                                leadingIcon = if (sortOrder == order) {
+                                    { Icon(Icons.Default.Check, contentDescription = null) }
+                                } else null,
+                                modifier = Modifier.testTag("downloads_sort_${order.name}")
+                            )
+                        }
+                    }
                 }
 
                 if (downloads.any { it.status == DownloadStatus.COMPLETED.name }) {
@@ -133,6 +188,49 @@ fun DownloadsScreen(
                     }
                 }
             }
+        }
+
+        // Search field (by file name)
+        if (totalCount > 0 || searchQuery.isNotBlank()) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.setSearchQuery(it) },
+                placeholder = {
+                    Text(
+                        "Поиск по имени файла",
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Очистить поиск")
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = UiSpacing.large)
+                    .testTag("downloads_search_field"),
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                )
+            )
+            Spacer(modifier = Modifier.height(UiSpacing.small))
         }
 
         // Tab Filter Chips

@@ -68,6 +68,7 @@ fun FileItemCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    sourceLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (isGrid) {
@@ -79,6 +80,7 @@ fun FileItemCard(
             onClick = onClick,
             onLongClick = onLongClick,
             onDownloadClick = onDownloadClick,
+            sourceLabel = sourceLabel,
             modifier = modifier
         )
     } else {
@@ -90,6 +92,7 @@ fun FileItemCard(
             onClick = onClick,
             onLongClick = onLongClick,
             onDownloadClick = onDownloadClick,
+            sourceLabel = sourceLabel,
             modifier = modifier
         )
     }
@@ -105,6 +108,7 @@ private fun FileGridItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    sourceLabel: String?,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -215,6 +219,27 @@ private fun FileGridItem(
                 }
             }
 
+            // Top-left source badge (unified pool: which saved link this file came from)
+            if (sourceLabel != null) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color(0x96000000),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(UiSpacing.extraSmall)
+                        .testTag("file_source_badge")
+                ) {
+                    Text(
+                        text = sourceLabel,
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
             // Top-right selection or download badge
             if (isSelectionMode) {
                 // Material 3 Expressive: the check morphs circle -> cookie on press.
@@ -258,6 +283,7 @@ private fun FileListItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    sourceLabel: String?,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -323,6 +349,16 @@ private fun FileListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (sourceLabel != null) {
+                    Spacer(modifier = Modifier.height(UiSpacing.micro))
+                    Text(
+                        text = sourceLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Spacer(modifier = Modifier.height(UiSpacing.micro))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(

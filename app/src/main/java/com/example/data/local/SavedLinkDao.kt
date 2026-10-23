@@ -14,6 +14,10 @@ interface SavedLinkDao {
     @Query("SELECT * FROM saved_links ORDER BY isFavorite DESC, createdAt DESC")
     fun getAllSavedLinks(): Flow<List<SavedLinkEntity>>
 
+    /** One-shot read used by the unified "Все файлы" pool loader. */
+    @Query("SELECT * FROM saved_links ORDER BY isFavorite DESC, createdAt DESC")
+    suspend fun getAllSavedLinksOnce(): List<SavedLinkEntity>
+
     @Query("SELECT * FROM saved_links WHERE weblinkKey = :weblinkKey LIMIT 1")
     suspend fun getByWeblink(weblinkKey: String): SavedLinkEntity?
 
