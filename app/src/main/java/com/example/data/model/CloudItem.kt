@@ -20,6 +20,18 @@ data class CloudItem(
     @Json(name = "video_duration") val videoDurationSeconds: Long? = null,
     @Json(name = "duration_ms") val durationMilliseconds: Long? = null
 ) {
+    companion object {
+        // Shared across all items: SimpleDateFormat construction is costly and these
+        // getters run for every rendered row and every filter pass. UI/parse callers
+        // are main-thread only, so one instance is safe.
+        private val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+        private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "tiff", "svg")
+        private val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "mov", "avi", "webm", "flv", "wmv", "3gp", "m4v")
+        private val AUDIO_EXTENSIONS = setOf("mp3", "flac", "wav", "m4a", "aac", "ogg", "wma")
+        private val ARCHIVE_EXTENSIONS = setOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz")
+        private val DOCUMENT_EXTENSIONS = setOf("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "csv")
+    }
+
     val mediaDurationSeconds: Long?
         get() = durationSeconds
             ?: videoDurationSeconds
@@ -42,8 +54,7 @@ data class CloudItem(
             if (isFolder) return false
             val t = type?.lowercase(Locale.ROOT) ?: ""
             if (t.contains("image") || t.contains("photo")) return true
-            val ext = fileExtension.lowercase(Locale.ROOT)
-            return ext in listOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "tiff", "svg")
+            return fileExtension.lowercase(Locale.ROOT) in IMAGE_EXTENSIONS
         }
 
     val isVideo: Boolean
@@ -51,8 +62,7 @@ data class CloudItem(
             if (isFolder) return false
             val t = type?.lowercase(Locale.ROOT) ?: ""
             if (t.contains("video")) return true
-            val ext = fileExtension.lowercase(Locale.ROOT)
-            return ext in listOf("mp4", "mkv", "mov", "avi", "webm", "flv", "wmv", "3gp", "m4v")
+            return fileExtension.lowercase(Locale.ROOT) in VIDEO_EXTENSIONS
         }
 
     val isAudio: Boolean
@@ -60,22 +70,19 @@ data class CloudItem(
             if (isFolder) return false
             val t = type?.lowercase(Locale.ROOT) ?: ""
             if (t.contains("audio")) return true
-            val ext = fileExtension.lowercase(Locale.ROOT)
-            return ext in listOf("mp3", "flac", "wav", "m4a", "aac", "ogg", "wma")
+            return fileExtension.lowercase(Locale.ROOT) in AUDIO_EXTENSIONS
         }
 
     val isArchive: Boolean
         get() {
             if (isFolder) return false
-            val ext = fileExtension.lowercase(Locale.ROOT)
-            return ext in listOf("zip", "rar", "7z", "tar", "gz", "bz2", "xz")
+            return fileExtension.lowercase(Locale.ROOT) in ARCHIVE_EXTENSIONS
         }
 
     val isDocument: Boolean
         get() {
             if (isFolder) return false
-            val ext = fileExtension.lowercase(Locale.ROOT)
-            return ext in listOf("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "csv")
+            return fileExtension.lowercase(Locale.ROOT) in DOCUMENT_EXTENSIONS
         }
 
     val fileExtension: String
@@ -114,9 +121,7 @@ data class CloudItem(
         get() {
             if (mtime <= 0) return ""
             return try {
-                val date = Date(mtime * 1000L)
-                val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-                sdf.format(date)
+                dateFormat.format(Date(mtime * 1000L))
             } catch (e: Exception) {
                 ""
             }
