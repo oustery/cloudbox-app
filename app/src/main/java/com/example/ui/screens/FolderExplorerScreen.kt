@@ -87,7 +87,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.CloudItem
 import com.example.data.model.CloudItemSortOrder
-import com.example.data.model.sortedBy
+import com.example.data.model.sortedByOrder
 import com.example.data.repository.ThumbnailSize
 import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.FileItemCard
@@ -171,7 +171,7 @@ fun FolderExplorerScreen(
             item.name.contains(searchQuery, ignoreCase = true)
         }
         matchesFilter && matchesQuery
-    }.sortedBy(fileSortOrder)
+    }.sortedByOrder(fileSortOrder)
 
     Column(
         modifier = modifier

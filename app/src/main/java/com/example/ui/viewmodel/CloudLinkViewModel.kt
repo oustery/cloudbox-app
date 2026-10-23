@@ -10,6 +10,7 @@ import com.example.data.model.CloudItemSortOrder
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
 import com.example.data.repository.ThumbnailSize
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -314,19 +315,40 @@ class CloudLinkViewModel(
                 _isLoadingAggregated.value = false
                 return@launch
             }
-            val results = coroutineScope {
+            val results: List<Pair<SavedLinkEntity, Result<FolderResult>>> = coroutineScope {
                 links.map { link ->
-                    async { link to runCatching { repository.fetchFolderContent(link.weblinkKey) } }
+                    async {
+                        // fetchFolderContent already returns Result (it handles
+                        // its own errors); only a non-Exception escape would
+                        // wrap again, so normalise explicitly to a flat Result.
+                        val outcome: Result<FolderResult> = try {
+                            repository.fetchFolderContent(link.weblinkKey)
+                        } catch (ce: CancellationException) {
+                            throw ce
+                        } catch (t: Throwable) {
+                            Result.failure(t)
+                        }
+                        link to outcome
+                    }
                 }.awaitAll()
             }
             val entries = mutableListOf<AggregatedEntry>()
             var failed = 0
             results.forEach { (link, result) ->
-                result.onSuccess { folder ->
+                val folder: FolderResult? = result.getOrNull()
+                if (folder == null) {
+                    failed++
+                } else {
                     folder.items.forEach { item ->
-                        entries.add(AggregatedEntry(item, link.title, link.weblinkKey))
+                        entries.add(
+                            AggregatedEntry(
+                                item = item,
+                                sourceTitle = link.title,
+                                sourceWeblinkKey = link.weblinkKey
+                            )
+                        )
                     }
-                }.onFailure { failed++ }
+                }
             }
             _aggregatedEntries.value = entries.distinctBy { it.item.weblink }
             _aggregatedFailedCount.value = failed

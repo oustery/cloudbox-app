@@ -137,8 +137,10 @@ enum class CloudItemSortOrder(val title: String) {
  * Folders always come first (canonical file-manager behaviour); files inside
  * each group follow the chosen order. Unknown values (mtime = 0, size = 0)
  * sink to the tail of their group instead of polluting the top of the list.
+ *
+ * Named [sortedByOrder] to avoid clashing with the stdlib Iterable.sortedBy.
  */
-fun List<CloudItem>.sortedBy(order: CloudItemSortOrder): List<CloudItem> {
+fun List<CloudItem>.sortedByOrder(order: CloudItemSortOrder): List<CloudItem> {
     val fileComparator: Comparator<CloudItem> = when (order) {
         CloudItemSortOrder.DATE_NEWEST -> compareByDescending<CloudItem> { it.mtime }
             .thenBy { it.name.lowercase(Locale.ROOT) }
