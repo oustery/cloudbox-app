@@ -89,6 +89,9 @@ import com.composables.icons.lucide.RefreshCw
 import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.X
 
+/** Status tabs above the downloads list; stable instance across recompositions. */
+private val downloadTabs = listOf("Все", "В процессе", "Завершено", "С ошибками")
+
 @Composable
 fun DownloadsScreen(
     viewModel: DownloadViewModel,
@@ -100,7 +103,7 @@ fun DownloadsScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
-    val tabs = listOf("Все", "В процессе", "Завершено", "С ошибками")
+    val tabs = downloadTabs
     val keyboardController = LocalSoftwareKeyboardController.current
     var isSortMenuExpanded by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()

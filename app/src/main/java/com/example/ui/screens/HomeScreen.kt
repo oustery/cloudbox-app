@@ -82,6 +82,9 @@ import com.example.ui.icons.StarFilled
 /** Categories a user can assign to a saved link. */
 private val assignableCategories = listOf("Все", "Фото и видео", "Документы", "Архивы")
 
+/** Filter tabs shown above the library list. */
+private val homeCategories = listOf("Все", "Избранное", "Фото и видео", "Документы", "Архивы")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -137,7 +140,7 @@ fun HomeScreen(
         }
     }
 
-    val categories = listOf("Все", "Избранное", "Фото и видео", "Документы", "Архивы")
+    val categories = homeCategories
 
     Column(
         modifier = modifier

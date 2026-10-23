@@ -237,8 +237,11 @@ private fun AboutRow(label: String, value: String) {
     }
 }
 
+// Reused across recompositions; UI calls are main-thread only.
+private val buildTimeFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+
 private fun formatBuildTime(epochMillis: Long): String = try {
-    SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(epochMillis))
+    buildTimeFormat.format(Date(epochMillis))
 } catch (e: Exception) {
     ""
 }

@@ -106,6 +106,8 @@ import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.SquareCheckBig
 import com.composables.icons.lucide.X
 
+private val filterChips = listOf("Все", "Медиа", "Фото", "Видео", "Аудио", "Документы", "Архивы")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderExplorerScreen(
@@ -156,8 +158,6 @@ fun FolderExplorerScreen(
         }
     }
 
-    val filterChips = listOf("Все", "Медиа", "Фото", "Видео", "Аудио", "Документы", "Архивы")
-
     // In folder mode entries carry no source; in pool mode each item remembers
     // which saved link it came from.
     val sourceEntries: List<AggregatedEntry> = if (isAggregated) {
@@ -166,23 +166,32 @@ fun FolderExplorerScreen(
         currentFolder?.items?.map { AggregatedEntry(item = it) } ?: emptyList()
     }
 
-    // Per-chip counters computed once per content change: "Фото (12)".
+    // Chips and their per-chip counters are stable across recompositions; the
+    // filter pass itself only reruns when content, filter, query or sort change.
     val chipCounts = remember(sourceEntries) {
         filterChips.associateWith { chip -> sourceEntries.count { it.item.matchesFilter(chip) } }
     }
 
-    val filteredEntries = sourceEntries.filter { entry ->
-        val matchesFilter = entry.item.matchesFilter(fileFilter)
-        val matchesQuery = if (searchQuery.isBlank()) true else {
-            entry.item.name.contains(searchQuery, ignoreCase = true)
+    val filteredEntries = remember(sourceEntries, fileFilter, searchQuery, fileSortOrder) {
+        sourceEntries.filter { entry ->
+            val matchesFilter = entry.item.matchesFilter(fileFilter)
+            val matchesQuery = if (searchQuery.isBlank()) true else {
+                entry.item.name.contains(searchQuery, ignoreCase = true)
+            }
+            matchesFilter && matchesQuery
+        }.let { list ->
+            val orderComparator = cloudItemComparator(fileSortOrder)
+            list.sortedWith(
+                compareBy<AggregatedEntry> { !it.item.isFolder }
+                    .thenComparator { a, b -> orderComparator.compare(a.item, b.item) }
+            )
         }
-        matchesFilter && matchesQuery
-    }.let { list ->
-        val orderComparator = cloudItemComparator(fileSortOrder)
-        list.sortedWith(
-            compareBy<AggregatedEntry> { !it.item.isFolder }
-                .thenComparator { a, b -> orderComparator.compare(a.item, b.item) }
-        )
+    }
+
+    // Media playlist reused by grid and list tap handlers; derived from the
+    // already-filtered entries so opening the viewer never rebuilds it per click.
+    val mediaPlaylist = remember(filteredEntries) {
+        filteredEntries.map { it.item }.filter { it.isImage || it.isVideo }
     }
 
     Column(
@@ -569,9 +578,7 @@ fun FolderExplorerScreen(
                                             } else if (item.isImage || item.isVideo) {
                                                 viewModel.openMediaViewer(
                                                     item,
-                                                    playlist = if (isAggregated) {
-                                                        filteredEntries.map { it.item }.filter { it.isImage || it.isVideo }
-                                                    } else null
+                                                    playlist = if (isAggregated) mediaPlaylist else null
                                                 )
                                             } else {
                                                 downloadViewModel.downloadItem(item)
@@ -616,9 +623,7 @@ fun FolderExplorerScreen(
                                             } else if (item.isImage || item.isVideo) {
                                                 viewModel.openMediaViewer(
                                                     item,
-                                                    playlist = if (isAggregated) {
-                                                        filteredEntries.map { it.item }.filter { it.isImage || it.isVideo }
-                                                    } else null
+                                                    playlist = if (isAggregated) mediaPlaylist else null
                                                 )
                                             } else {
                                                 downloadViewModel.downloadItem(item)

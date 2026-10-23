@@ -365,10 +365,15 @@ internal fun filesLabel(count: Int): String {
     }
 }
 
+// Shared formatter: SimpleDateFormat construction is expensive and this runs for
+// every card on every recomposition; UI calls are main-thread only, so one
+// instance is safe to reuse.
+private val cardDateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+
 private fun formatCardDate(timestamp: Long): String {
     if (timestamp <= 0L) return ""
     return try {
-        SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date(timestamp))
+        cardDateFormat.format(Date(timestamp))
     } catch (e: Exception) {
         ""
     }
