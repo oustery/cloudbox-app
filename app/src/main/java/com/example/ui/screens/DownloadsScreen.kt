@@ -43,7 +43,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import com.example.ui.components.expressive.WavyLinearProgress
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -369,10 +369,10 @@ private fun DownloadItemCard(
                 Spacer(modifier = Modifier.height(UiSpacing.medium))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (statusEnum == DownloadStatus.DOWNLOADING && task.fileSize <= 0L) {
-                        LinearProgressIndicator(
-                            modifier = Modifier.weight(1f).height(4.dp),
-                            color = statusColor,
-                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        // Material 3 Expressive wavy progress (indeterminate).
+                        WavyLinearProgress(
+                            modifier = Modifier.weight(1f),
+                            color = statusColor
                         )
                         Text(
                             text = "Размер неизвестен",
@@ -381,11 +381,11 @@ private fun DownloadItemCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
-                        LinearProgressIndicator(
+                        // Material 3 Expressive wavy progress (determinate).
+                        WavyLinearProgress(
                             progress = { task.progressPercent },
-                            modifier = Modifier.weight(1f).height(4.dp),
-                            color = statusColor,
-                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            modifier = Modifier.weight(1f),
+                            color = statusColor
                         )
                         Text(
                             text = if (task.fileSize > 0L) task.formattedProgress else "—",

@@ -3,6 +3,8 @@ package com.example.ui.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -92,12 +94,14 @@ private val LightColorScheme = lightColorScheme(
     onErrorContainer = Color(0xFF410002)
 )
 
+// Canonical Material 3 Expressive corner scale:
+// extraSmall 4 / small 8 / medium 12 / large 16 / extraLarge 28.
 private val CloudBoxShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(32.dp)
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(28.dp)
 )
 
 @Composable
@@ -115,8 +119,12 @@ fun MyApplicationTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
+    // Material 3 Expressive: spring-based physics motion for every themed
+    // component (FAB menu, chips, dialogs...) plus the public motionScheme
+    // API used by our custom components.
+    MaterialExpressiveTheme(
         colorScheme = colorScheme,
+        motionScheme = MotionScheme.expressive(),
         typography = Typography,
         shapes = CloudBoxShapes,
         content = content
