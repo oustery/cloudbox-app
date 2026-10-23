@@ -43,16 +43,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.CloudDownload
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -118,6 +108,11 @@ import com.example.ui.viewmodel.CloudLinkViewModelFactory
 import com.example.ui.viewmodel.DownloadViewModel
 import com.example.ui.viewmodel.DownloadViewModelFactory
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.CloudDownload
+import com.composables.icons.lucide.Folder
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.Settings
 
 class MainActivity : ComponentActivity() {
 
@@ -360,7 +355,7 @@ fun MainAppScreen(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.CloudDownload,
+                                    imageVector = Lucide.CloudDownload,
                                     contentDescription = "Загрузки",
                                     tint = if (currentScreen == "downloads") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
@@ -387,7 +382,7 @@ fun MainAppScreen(
                         onClick = { currentScreen = "home" },
                         icon = {
                             Icon(
-                                imageVector = if (currentScreen == "home") Icons.Filled.Home else Icons.Outlined.Home,
+                                imageVector = if (currentScreen == "home") Lucide.House else Lucide.House,
                                 contentDescription = "Главная"
                             )
                         },
@@ -416,7 +411,7 @@ fun MainAppScreen(
                         onClick = { currentScreen = "explorer" },
                         icon = {
                             Icon(
-                                imageVector = if (currentScreen == "explorer") Icons.Filled.Folder else Icons.Outlined.Folder,
+                                imageVector = if (currentScreen == "explorer") Lucide.Folder else Lucide.Folder,
                                 contentDescription = "Проводник"
                             )
                         },
@@ -461,7 +456,7 @@ fun MainAppScreen(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = if (currentScreen == "downloads") Icons.Filled.CloudDownload else Icons.Outlined.CloudDownload,
+                                    imageVector = if (currentScreen == "downloads") Lucide.CloudDownload else Lucide.CloudDownload,
                                     contentDescription = "Загрузки"
                                 )
                             }
@@ -490,7 +485,7 @@ fun MainAppScreen(
                         onClick = openSettings,
                         icon = {
                             Icon(
-                                imageVector = if (currentScreen == "settings") Icons.Filled.Settings else Icons.Outlined.Settings,
+                                imageVector = if (currentScreen == "settings") Lucide.Settings else Lucide.Settings,
                                 contentDescription = "Настройки"
                             )
                         },
@@ -536,7 +531,7 @@ fun MainAppScreen(
                         onClick = { currentScreen = "home" },
                         icon = {
                             Icon(
-                                imageVector = if (currentScreen == "home") Icons.Filled.Home else Icons.Outlined.Home,
+                                imageVector = if (currentScreen == "home") Lucide.House else Lucide.House,
                                 contentDescription = "Главная"
                             )
                         },
@@ -554,7 +549,7 @@ fun MainAppScreen(
                         onClick = { currentScreen = "explorer" },
                         icon = {
                             Icon(
-                                imageVector = if (currentScreen == "explorer") Icons.Filled.Folder else Icons.Outlined.Folder,
+                                imageVector = if (currentScreen == "explorer") Lucide.Folder else Lucide.Folder,
                                 contentDescription = "Проводник"
                             )
                         },
@@ -584,7 +579,7 @@ fun MainAppScreen(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = if (currentScreen == "downloads") Icons.Filled.CloudDownload else Icons.Outlined.CloudDownload,
+                                    imageVector = if (currentScreen == "downloads") Lucide.CloudDownload else Lucide.CloudDownload,
                                     contentDescription = "Загрузки"
                                 )
                             }
@@ -603,7 +598,7 @@ fun MainAppScreen(
                         onClick = openSettings,
                         icon = {
                             Icon(
-                                imageVector = if (currentScreen == "settings") Icons.Filled.Settings else Icons.Outlined.Settings,
+                                imageVector = if (currentScreen == "settings") Lucide.Settings else Lucide.Settings,
                                 contentDescription = "Настройки"
                             )
                         },

@@ -26,13 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.CloudQueue
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.FolderSpecial
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -78,6 +71,13 @@ import com.example.ui.core.feedback.rememberHaptics
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.theme.UiRadius
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ChevronRight
+import com.composables.icons.lucide.Layers
+import com.composables.icons.lucide.Link
+import com.composables.icons.lucide.Search
+import com.composables.icons.lucide.X
+import com.example.ui.icons.StarFilled
 
 /** Categories a user can assign to a saved link. */
 private val assignableCategories = listOf("Все", "Фото и видео", "Документы", "Архивы")
@@ -201,7 +201,7 @@ fun HomeScreen(
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = Lucide.Search,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -209,7 +209,7 @@ fun HomeScreen(
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Очистить поиск")
+                            Icon(Lucide.X, contentDescription = "Очистить поиск")
                         }
                     }
                 },
@@ -238,7 +238,7 @@ fun HomeScreen(
                     leadingIcon = if (category == "Избранное" && isSelected) {
                         {
                             Icon(
-                                imageVector = Icons.Default.Star,
+                                imageVector = StarFilled,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.tertiary
@@ -275,7 +275,7 @@ fun HomeScreen(
                             "Попробуйте изменить запрос или очистить поиск."
                         else
                             "Вставьте публичную ссылку выше и нажмите «Открыть». Ссылка появится здесь.",
-                        icon = Icons.Outlined.FolderSpecial,
+                        icon = Lucide.Link,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -364,7 +364,7 @@ private fun PoolEntryCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.CloudQueue,
+                    imageVector = Lucide.Layers,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
@@ -388,7 +388,7 @@ private fun PoolEntryCard(
                 )
             }
             Icon(
-                imageVector = Icons.Default.ChevronRight,
+                imageVector = Lucide.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
             )

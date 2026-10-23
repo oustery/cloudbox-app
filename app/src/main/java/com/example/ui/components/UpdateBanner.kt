@@ -9,11 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -31,6 +26,11 @@ import com.example.data.update.AppUpdateInfo
 import com.example.data.update.UpdateUiState
 import com.example.ui.components.expressive.WavyCircularProgress
 import java.util.Locale
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.CircleCheck
+import com.composables.icons.lucide.CloudDownload
+import com.composables.icons.lucide.ExternalLink
+import com.composables.icons.lucide.X
 
 /**
  * Compact banner shown on the home screen when a newer CloudBox build is available on
@@ -65,7 +65,7 @@ fun UpdateBanner(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.SystemUpdateAlt,
+                        imageVector = Lucide.CloudDownload,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp)
                     )
@@ -87,7 +87,7 @@ fun UpdateBanner(
                     }
                     IconButton(onClick = onOpenRelease) {
                         Icon(
-                            imageVector = Icons.Filled.OpenInNew,
+                            imageVector = Lucide.ExternalLink,
                             contentDescription = "Что нового",
                             modifier = Modifier.size(18.dp)
                         )
@@ -102,7 +102,7 @@ fun UpdateBanner(
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(
-                            imageVector = Icons.Filled.Close,
+                            imageVector = Lucide.X,
                             contentDescription = "Скрыть",
                             modifier = Modifier.size(18.dp)
                         )
@@ -137,7 +137,7 @@ fun UpdateBanner(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.CheckCircle,
+                        imageVector = Lucide.CircleCheck,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp)
                     )

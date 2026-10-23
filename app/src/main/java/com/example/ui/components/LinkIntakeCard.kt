@@ -16,11 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -48,6 +43,11 @@ import androidx.compose.ui.unit.dp
 import com.example.ui.theme.BrandGradientEnd
 import com.example.ui.theme.BrandGradientStart
 import com.example.ui.theme.UiSpacing
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ClipboardPaste
+import com.composables.icons.lucide.CloudDownload
+import com.composables.icons.lucide.FolderOpen
+import com.composables.icons.lucide.X
 
 @Composable
 fun LinkIntakeCard(
@@ -85,7 +85,7 @@ fun LinkIntakeCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CloudDownload,
+                        imageVector = Lucide.CloudDownload,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(20.dp)
@@ -136,7 +136,7 @@ fun LinkIntakeCard(
                 trailingIcon = {
                     if (value.isNotEmpty()) {
                         IconButton(onClick = { onValueChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Очистить ссылку")
+                            Icon(Lucide.X, contentDescription = "Очистить ссылку")
                         }
                     }
                 },
@@ -174,7 +174,7 @@ fun LinkIntakeCard(
 @Composable
 private fun PasteLinkButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     TextButton(onClick = onClick, modifier = modifier.testTag("paste_button")) {
-        Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
+        Icon(Lucide.ClipboardPaste, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(UiSpacing.iconGap))
         Text("Вставить", style = MaterialTheme.typography.labelLarge)
     }
@@ -191,7 +191,7 @@ private fun OpenLinkButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             contentColor = MaterialTheme.colorScheme.onPrimary
         )
     ) {
-        Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+        Icon(Lucide.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(UiSpacing.iconGap))
         Text("Открыть", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
     }

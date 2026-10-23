@@ -26,19 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.FullscreenExit
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Loop
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import com.example.ui.components.expressive.WavyCircularProgress
 import androidx.compose.material3.DropdownMenu
@@ -89,6 +76,18 @@ import com.example.ui.theme.UiMotionTokens
 import com.example.ui.theme.UiSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Gauge
+import com.composables.icons.lucide.Info
+import com.composables.icons.lucide.Maximize
+import com.composables.icons.lucide.Minimize
+import com.composables.icons.lucide.Pause
+import com.composables.icons.lucide.Play
+import com.composables.icons.lucide.Repeat
+import com.composables.icons.lucide.RotateCcw
+import com.composables.icons.lucide.RotateCw
+import com.composables.icons.lucide.Volume2
+import com.composables.icons.lucide.VolumeX
 
 /**
  * Streams a cloud video through Media3/ExoPlayer instead of the legacy VideoView.
@@ -321,7 +320,7 @@ internal fun VideoPlayerContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (seekFeedback >= 0) Icons.Default.Forward10 else Icons.Default.Replay10,
+                        imageVector = if (seekFeedback >= 0) Lucide.RotateCw else Lucide.RotateCcw,
                         contentDescription = null,
                         tint = Color.White
                     )
@@ -356,7 +355,7 @@ internal fun VideoPlayerContent(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = Lucide.Play,
                         contentDescription = "Воспроизвести",
                         tint = Color.White,
                         modifier = Modifier.size(40.dp)
@@ -459,7 +458,7 @@ internal fun VideoPlayerContent(
 
                         IconButton(onClick = { showMetadata = !showMetadata }) {
                             Icon(
-                                imageVector = Icons.Default.Info,
+                                imageVector = Lucide.Info,
                                 contentDescription = if (showMetadata) "Скрыть сведения" else "Показать сведения",
                                 tint = Color.White
                             )
@@ -468,7 +467,7 @@ internal fun VideoPlayerContent(
                         Box {
                             IconButton(onClick = { speedMenuOpen = true }) {
                                 Icon(
-                                    Icons.Default.Speed,
+                                    Lucide.Gauge,
                                     contentDescription = "Скорость воспроизведения: %.2fx".format(playbackSpeed),
                                     tint = Color.White
                                 )
@@ -501,7 +500,7 @@ internal fun VideoPlayerContent(
                             isMuted = nextMuted
                         }) {
                             Icon(
-                                imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                                imageVector = if (isMuted) Lucide.VolumeX else Lucide.Volume2,
                                 contentDescription = if (isMuted) "Включить звук" else "Выключить звук",
                                 tint = Color.White
                             )
@@ -514,7 +513,7 @@ internal fun VideoPlayerContent(
                             isLoopingOne = nextLoop
                         }) {
                             Icon(
-                                imageVector = Icons.Default.Loop,
+                                imageVector = Lucide.Repeat,
                                 contentDescription = if (isLoopingOne) "Выключить повтор" else "Повторять видео",
                                 tint = if (isLoopingOne) PlayerAccent else Color.White
                             )
@@ -531,7 +530,7 @@ internal fun VideoPlayerContent(
                                 }
                         }) {
                             Icon(
-                                imageVector = if (isFullscreenRequested) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                imageVector = if (isFullscreenRequested) Lucide.Minimize else Lucide.Maximize,
                                 contentDescription = if (isFullscreenRequested) "Выйти из полноэкранного режима" else "Полноэкранный режим",
                                 tint = Color.White
                             )
@@ -545,7 +544,7 @@ internal fun VideoPlayerContent(
                     ) {
                         IconButton(onClick = { player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L)) }) {
                             Icon(
-                                Icons.Default.Replay10,
+                                Lucide.RotateCcw,
                                 contentDescription = "Назад на 10 секунд",
                                 tint = Color.White
                             )
@@ -560,7 +559,7 @@ internal fun VideoPlayerContent(
                                 if (player.isPlaying) player.pause() else player.play()
                             }) {
                                 Icon(
-                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    imageVector = if (isPlaying) Lucide.Pause else Lucide.Play,
                                     contentDescription = if (isPlaying) "Пауза" else "Воспроизвести",
                                     tint = Color(0xFF2B1218)
                                 )
@@ -574,7 +573,7 @@ internal fun VideoPlayerContent(
                             )
                         }) {
                             Icon(
-                                Icons.Default.Forward10,
+                                Lucide.RotateCw,
                                 contentDescription = "Вперёд на 10 секунд",
                                 tint = Color.White
                             )
