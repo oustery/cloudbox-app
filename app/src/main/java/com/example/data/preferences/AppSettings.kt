@@ -8,8 +8,10 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.preferences.UiPrefs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -18,7 +20,6 @@ private val Context.cloudBoxSettingsDataStore by preferencesDataStore(name = "cl
 
 private val themeModeKey = stringPreferencesKey("theme_mode")
 private val dynamicColorsKey = booleanPreferencesKey("dynamic_colors")
-private val gridByDefaultKey = booleanPreferencesKey("grid_by_default")
 
 enum class AppThemeMode(val title: String) {
     SYSTEM("Системная"),
@@ -33,8 +34,7 @@ enum class AppThemeMode(val title: String) {
 
 data class AppSettings(
     val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
-    val dynamicColors: Boolean = true,
-    val gridByDefault: Boolean = true
+    val dynamicColors: Boolean = true
 )
 
 private class AppSettingsRepository(context: Context) {
@@ -43,8 +43,7 @@ private class AppSettingsRepository(context: Context) {
     val settings: Flow<AppSettings> = dataStore.data.map { preferences ->
         AppSettings(
             themeMode = AppThemeMode.fromPreference(preferences[themeModeKey]),
-            dynamicColors = preferences[dynamicColorsKey] ?: true,
-            gridByDefault = preferences[gridByDefaultKey] ?: true
+            dynamicColors = preferences[dynamicColorsKey] ?: true
         )
     }
 
@@ -55,19 +54,23 @@ private class AppSettingsRepository(context: Context) {
     suspend fun setDynamicColors(enabled: Boolean) {
         dataStore.edit { it[dynamicColorsKey] = enabled }
     }
-
-    suspend fun setGridByDefault(enabled: Boolean) {
-        dataStore.edit { it[gridByDefaultKey] = enabled }
-    }
 }
 
 class AppSettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppSettingsRepository(application)
+    private val uiPrefs = UiPrefs(application)
 
     val settings = repository.settings.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = AppSettings()
+    )
+
+    /** Explorer view mode — the single source of truth is [UiPrefs]. */
+    val explorerGridView: StateFlow<Boolean> = uiPrefs.explorerGridView.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = true
     )
 
     fun setThemeMode(mode: AppThemeMode) {
@@ -78,7 +81,7 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch { repository.setDynamicColors(enabled) }
     }
 
-    fun setGridByDefault(enabled: Boolean) {
-        viewModelScope.launch { repository.setGridByDefault(enabled) }
+    fun setExplorerGridView(isGrid: Boolean) {
+        viewModelScope.launch { uiPrefs.setExplorerGridView(isGrid) }
     }
 }

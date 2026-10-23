@@ -95,6 +95,7 @@ import com.example.data.local.AppDatabase
 import com.example.data.preferences.AppSettings
 import com.example.data.preferences.AppSettingsViewModel
 import com.example.data.preferences.AppThemeMode
+import com.example.data.preferences.UiPrefs
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.DownloadRepository
 import com.example.data.update.AppUpdateManager
@@ -145,7 +146,7 @@ class MainActivity : ComponentActivity() {
     private val cloudViewModel: CloudLinkViewModel by viewModels {
         val db = AppDatabase.getDatabase(applicationContext)
         val repo = CloudMailRuRepository(savedLinkDao = db.savedLinkDao())
-        CloudLinkViewModelFactory(repo)
+        CloudLinkViewModelFactory(repo, UiPrefs(applicationContext))
     }
 
     private val downloadViewModel: DownloadViewModel by viewModels {
@@ -270,9 +271,7 @@ fun MainAppScreen(
     val activeMediaItem by cloudViewModel.activeMediaItem.collectAsStateWithLifecycle()
     val isImeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
-    LaunchedEffect(settings.gridByDefault) {
-        cloudViewModel.setGridView(settings.gridByDefault)
-    }
+    val explorerGridView by settingsViewModel.explorerGridView.collectAsStateWithLifecycle()
 
     // When folder finishes loading, switch to explorer screen
     LaunchedEffect(currentFolder) {
@@ -656,9 +655,10 @@ fun MainAppScreen(
                     "settings" -> {
                         SettingsScreen(
                             settings = settings,
+                            explorerGridView = explorerGridView,
                             onThemeModeChanged = settingsViewModel::setThemeMode,
                             onDynamicColorsChanged = settingsViewModel::setDynamicColors,
-                            onGridByDefaultChanged = settingsViewModel::setGridByDefault,
+                            onExplorerGridViewChanged = settingsViewModel::setExplorerGridView,
                             onBack = { currentScreen = previousScreen }
                         )
                     }

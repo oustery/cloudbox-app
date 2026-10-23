@@ -10,6 +10,7 @@ import com.example.data.model.CloudItemSortOrder
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
 import com.example.data.repository.ThumbnailSize
+import com.example.data.preferences.UiPrefs
 import com.example.ui.core.feedback.UiMessenger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -40,7 +42,8 @@ data class AggregatedEntry(
 )
 
 class CloudLinkViewModel(
-    private val repository: CloudMailRuRepository
+    private val repository: CloudMailRuRepository,
+    private val uiPrefs: UiPrefs? = null
 ) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow("Все")
@@ -144,6 +147,19 @@ class CloudLinkViewModel(
         viewModelScope.launch {
             repository.refreshDispatcher()
         }
+        // Restore the remembered explorer workspace (sort/filter/view mode).
+        if (uiPrefs != null) {
+            viewModelScope.launch {
+                _fileSortOrder.value = uiPrefs.explorerSortOrder.first()
+                _fileTypeFilter.value = uiPrefs.explorerFilter.first()
+                _isGridView.value = uiPrefs.explorerGridView.first()
+            }
+        }
+    }
+
+    private fun persist(block: suspend (UiPrefs) -> Unit) {
+        val prefs = uiPrefs ?: return
+        viewModelScope.launch { block(prefs) }
     }
 
     fun setCategory(category: String) {
@@ -161,6 +177,7 @@ class CloudLinkViewModel(
 
     fun setFileTypeFilter(filter: String) {
         _fileTypeFilter.value = filter
+        persist { it.setExplorerFilter(filter) }
     }
 
     fun setFileSearchQuery(query: String) {
@@ -168,15 +185,17 @@ class CloudLinkViewModel(
     }
 
     fun toggleGridView() {
-        _isGridView.value = !_isGridView.value
+        setGridView(!_isGridView.value)
     }
 
     fun setGridView(isGrid: Boolean) {
         _isGridView.value = isGrid
+        persist { it.setExplorerGridView(isGrid) }
     }
 
     fun setFileSortOrder(order: CloudItemSortOrder) {
         _fileSortOrder.value = order
+        persist { it.setExplorerSortOrder(order) }
     }
 
     fun openMediaViewer(item: CloudItem, playlist: List<CloudItem>? = null) {
@@ -285,7 +304,7 @@ class CloudLinkViewModel(
      */
     fun openFromPool(weblink: String) {
         _fileSearchQuery.value = ""
-        _fileTypeFilter.value = "Все"
+        setFileTypeFilter("Все")
         loadFolder(weblink, resetStack = false)
     }
 
@@ -296,7 +315,7 @@ class CloudLinkViewModel(
         _selectedItems.value = emptySet()
         _isSelectionMode.value = false
         _fileSearchQuery.value = ""
-        _fileTypeFilter.value = "Все"
+        setFileTypeFilter("Все")
     }
 
     /**
@@ -525,12 +544,13 @@ class CloudLinkViewModel(
 }
 
 class CloudLinkViewModelFactory(
-    private val repository: CloudMailRuRepository
+    private val repository: CloudMailRuRepository,
+    private val uiPrefs: UiPrefs? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CloudLinkViewModel::class.java)) {
-            return CloudLinkViewModel(repository) as T
+            return CloudLinkViewModel(repository, uiPrefs) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
