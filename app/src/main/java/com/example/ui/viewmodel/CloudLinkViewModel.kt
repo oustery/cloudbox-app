@@ -10,6 +10,7 @@ import com.example.data.model.CloudItemSortOrder
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
 import com.example.data.repository.ThumbnailSize
+import com.example.data.preferences.GridDensity
 import com.example.data.preferences.UiPrefs
 import com.example.ui.core.feedback.UiMessenger
 import kotlinx.coroutines.CancellationException
@@ -153,8 +154,17 @@ class CloudLinkViewModel(
                 _fileSortOrder.value = uiPrefs.explorerSortOrder.first()
                 _fileTypeFilter.value = uiPrefs.explorerFilter.first()
                 _isGridView.value = uiPrefs.explorerGridView.first()
+                _gridDensity.value = uiPrefs.explorerGridDensity.first()
             }
         }
+    }
+
+    private val _gridDensity = MutableStateFlow(GridDensity.STANDARD)
+    val gridDensity: StateFlow<GridDensity> = _gridDensity.asStateFlow()
+
+    fun setGridDensity(density: GridDensity) {
+        _gridDensity.value = density
+        persist { it.setExplorerGridDensity(density) }
     }
 
     private fun persist(block: suspend (UiPrefs) -> Unit) {

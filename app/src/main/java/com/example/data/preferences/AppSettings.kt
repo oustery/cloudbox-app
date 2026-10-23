@@ -73,6 +73,12 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
         initialValue = true
     )
 
+    val explorerGridDensity: StateFlow<GridDensity> = uiPrefs.explorerGridDensity.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = GridDensity.STANDARD
+    )
+
     fun setThemeMode(mode: AppThemeMode) {
         viewModelScope.launch { repository.setThemeMode(mode) }
     }
@@ -83,5 +89,9 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setExplorerGridView(isGrid: Boolean) {
         viewModelScope.launch { uiPrefs.setExplorerGridView(isGrid) }
+    }
+
+    fun setExplorerGridDensity(density: GridDensity) {
+        viewModelScope.launch { uiPrefs.setExplorerGridDensity(density) }
     }
 }
