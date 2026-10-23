@@ -3,9 +3,12 @@ package com.example.ui.screens
 import androidx.activity.compose.BackHandler
 // Top-level AnimatedVisibility (inside a Box nested in a Column the ColumnScope
 // overload would otherwise win the implicit-receiver resolution).
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibility as OverlayVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -73,6 +76,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -126,6 +130,9 @@ fun FolderExplorerScreen(
     val aggregatedFailedCount by viewModel.aggregatedFailedCount.collectAsStateWithLifecycle()
     val savedLinksTotal by viewModel.savedLinksTotal.collectAsStateWithLifecycle()
     var isSortMenuExpanded by remember { mutableStateOf(false) }
+    // Collapsible search: the field is hidden until the magnifier is tapped;
+    // collapsing again clears the query so no hidden filter lingers.
+    var searchVisible by rememberSaveable { mutableStateOf(false) }
 
     // Unified pool mode: the explorer shows the merged content of every saved
     // link whenever no specific folder is open.
@@ -147,7 +154,7 @@ fun FolderExplorerScreen(
         }
     }
 
-    val filterChips = listOf("Все", "Фото", "Видео", "Аудио", "Документы", "Архивы")
+    val filterChips = listOf("Все", "Медиа", "Фото", "Видео", "Аудио", "Документы", "Архивы")
 
     // In folder mode entries carry no source; in pool mode each item remembers
     // which saved link it came from.
@@ -157,18 +164,15 @@ fun FolderExplorerScreen(
         currentFolder?.items?.map { AggregatedEntry(item = it) } ?: emptyList()
     }
 
+    // Per-chip counters computed once per content change: "Фото (12)".
+    val chipCounts = remember(sourceEntries) {
+        filterChips.associateWith { chip -> sourceEntries.count { it.item.matchesFilter(chip) } }
+    }
+
     val filteredEntries = sourceEntries.filter { entry ->
-        val item = entry.item
-        val matchesFilter = when (fileFilter) {
-            "Фото" -> item.isImage
-            "Видео" -> item.isVideo
-            "Аудио" -> item.isAudio
-            "Документы" -> item.isDocument
-            "Архивы" -> item.isArchive
-            else -> true
-        }
+        val matchesFilter = entry.item.matchesFilter(fileFilter)
         val matchesQuery = if (searchQuery.isBlank()) true else {
-            item.name.contains(searchQuery, ignoreCase = true)
+            entry.item.name.contains(searchQuery, ignoreCase = true)
         }
         matchesFilter && matchesQuery
     }.let { list ->
@@ -234,13 +238,32 @@ fun FolderExplorerScreen(
                         } else if (currentFolder?.items != null) {
                             val countFiles = currentFolder!!.items.count { !it.isFolder }
                             val countFolders = currentFolder!!.items.count { it.isFolder }
+                            val totalSize = currentFolder!!.total?.size ?: 0L
                             Text(
-                                text = "$countFiles файлов, $countFolders папок",
+                                text = if (totalSize > 0) {
+                                    "$countFiles файлов, $countFolders папок • ${formatTotalSize(totalSize)}"
+                                } else {
+                                    "$countFiles файлов, $countFolders папок"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+
+                    // Collapsible search toggle
+                    MorphingIconButton(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Поиск",
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        onClick = {
+                            if (searchVisible && searchQuery.isNotBlank()) {
+                                viewModel.setFileSearchQuery("")
+                            }
+                            searchVisible = !searchVisible
+                        },
+                        modifier = Modifier.testTag("explorer_search_toggle")
+                    )
 
                     // Toggle Grid/List
                     MorphingIconButton(
@@ -335,46 +358,53 @@ fun FolderExplorerScreen(
                 .fillMaxWidth()
                 .padding(horizontal = UiSpacing.large, vertical = UiSpacing.small)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setFileSearchQuery(it) },
-                placeholder = {
-                    Text(
-                        if (isAggregated) "Поиск во всех файлах" else "Поиск в папке",
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.setFileSearchQuery("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Очистить")
+            AnimatedVisibility(
+                visible = searchVisible || searchQuery.isNotBlank(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setFileSearchQuery(it) },
+                    placeholder = {
+                        Text(
+                            if (isAggregated) "Поиск во всех файлах" else "Поиск в папке",
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.setFileSearchQuery("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                            }
                         }
-                    }
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("explorer_search_field"),
-                shape = RoundedCornerShape(28.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("explorer_search_field"),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                    )
                 )
-            )
+            }
 
             Spacer(modifier = Modifier.height(UiSpacing.small))
 
             AdaptiveChipGroup(items = filterChips, modifier = Modifier.fillMaxWidth()) { chip ->
                     val isSelected = fileFilter == chip
+                    val count = chipCounts[chip] ?: 0
                     FilterChip(
                         selected = isSelected,
                         onClick = { viewModel.setFileTypeFilter(chip) },
-                        label = { Text(chip) },
+                        label = { Text("$chip ($count)") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -719,5 +749,29 @@ private fun SelectionToolbarOverlay(
                 }
             )
         }
+    }
+}
+
+/** Filter predicate shared by the filter chips (with counters) and the list. */
+private fun CloudItem.matchesFilter(filter: String): Boolean = when (filter) {
+    "Медиа" -> isImage || isVideo || isAudio
+    "Фото" -> isImage
+    "Видео" -> isVideo
+    "Аудио" -> isAudio
+    "Документы" -> isDocument
+    "Архивы" -> isArchive
+    else -> true
+}
+
+/** Human-readable total size for the folder subtitle ("1,2 ГБ"). */
+private fun formatTotalSize(bytes: Long): String {
+    if (bytes <= 0) return ""
+    val kb = bytes / 1024.0
+    val mb = kb / 1024.0
+    val gb = mb / 1024.0
+    return when {
+        gb >= 1.0 -> String.format(java.util.Locale.getDefault(), "%.1f ГБ", gb)
+        mb >= 1.0 -> String.format(java.util.Locale.getDefault(), "%.1f МБ", mb)
+        else -> String.format(java.util.Locale.getDefault(), "%.0f КБ", kb)
     }
 }

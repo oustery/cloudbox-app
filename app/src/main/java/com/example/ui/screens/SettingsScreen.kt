@@ -36,9 +36,10 @@ import com.example.ui.theme.UiSpacing
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
+    explorerGridView: Boolean,
     onThemeModeChanged: (AppThemeMode) -> Unit,
     onDynamicColorsChanged: (Boolean) -> Unit,
-    onGridByDefaultChanged: (Boolean) -> Unit,
+    onExplorerGridViewChanged: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -123,9 +124,9 @@ fun SettingsScreen(
                 modifier = Modifier.padding(UiSpacing.large),
                 verticalArrangement = Arrangement.spacedBy(UiSpacing.small)
             ) {
-                Text("Вид файлов по умолчанию", style = MaterialTheme.typography.titleSmall)
+                Text("Вид файлов", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Выберите, как удобнее просматривать содержимое папок.",
+                    "Запоминается между сессиями — проводник откроется так же, как вы его оставили.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -134,8 +135,8 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) { isGrid ->
                     FilterChip(
-                        selected = settings.gridByDefault == isGrid,
-                        onClick = { onGridByDefaultChanged(isGrid) },
+                        selected = explorerGridView == isGrid,
+                        onClick = { onExplorerGridViewChanged(isGrid) },
                         label = { Text(if (isGrid) "Сетка" else "Список") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
