@@ -79,6 +79,9 @@ import com.example.data.local.DownloadStatus
 import com.example.data.local.DownloadTaskEntity
 import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.ContentStatePanel
+import com.example.ui.core.components.ConfirmDialog
+import com.example.ui.core.feedback.UiMessenger
+import com.example.ui.core.feedback.rememberHaptics
 import com.example.ui.theme.StatusError
 import com.example.ui.theme.StatusSuccess
 import com.example.ui.theme.StatusWarning
@@ -101,6 +104,8 @@ fun DownloadsScreen(
     val tabs = listOf("Все", "В процессе", "Завершено", "С ошибками")
     val keyboardController = LocalSoftwareKeyboardController.current
     var isSortMenuExpanded by remember { mutableStateOf(false) }
+    val haptics = rememberHaptics()
+    var showClearCompletedDialog by remember { mutableStateOf(false) }
 
     BackHandler {
         onBack()
@@ -177,7 +182,7 @@ fun DownloadsScreen(
 
                 if (downloads.any { it.status == DownloadStatus.COMPLETED.name }) {
                     IconButton(
-                        onClick = { viewModel.clearCompleted() },
+                        onClick = { showClearCompletedDialog = true },
                         modifier = Modifier.testTag("clear_completed_downloads")
                     ) {
                         Icon(
@@ -294,6 +299,23 @@ fun DownloadsScreen(
                 }
             }
         }
+    }
+
+    // Destructive bulk action gets an explicit confirmation.
+    if (showClearCompletedDialog) {
+        ConfirmDialog(
+            title = "Очистить завершённые?",
+            text = "Из списка исчезнут все завершённые загрузки. Скачанные файлы останутся на устройстве.",
+            confirmLabel = "Очистить",
+            isDanger = true,
+            onConfirm = {
+                showClearCompletedDialog = false
+                haptics.confirm()
+                viewModel.clearCompleted()
+                UiMessenger.show("Завершённые загрузки удалены из списка")
+            },
+            onDismiss = { showClearCompletedDialog = false }
+        )
     }
 }
 

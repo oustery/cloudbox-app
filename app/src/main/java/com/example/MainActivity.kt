@@ -75,6 +75,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,11 +98,16 @@ import com.example.data.preferences.AppThemeMode
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.DownloadRepository
 import com.example.data.update.AppUpdateManager
+import com.example.ui.core.feedback.UiMessenger
 import com.example.ui.screens.DownloadsScreen
 import com.example.ui.screens.FolderExplorerScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MediaViewerScreen
 import com.example.ui.screens.SettingsScreen
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import com.example.ui.theme.BrandGradientEnd
 import com.example.ui.theme.BrandGradientStart
 import com.example.ui.theme.MyApplicationTheme
@@ -233,8 +239,28 @@ fun MainAppScreen(
     pendingScreen: String? = null,
     onPendingScreenConsumed: () -> Unit = {}
 ) {
-    var currentScreen by remember { mutableStateOf("home") } // home, explorer, downloads, settings
-    var previousScreen by remember { mutableStateOf("home") }
+    // rememberSaveable: screen survives rotation and process recreation;
+    // ViewModel-owned state (open folder, filters, selection) survives config
+    // changes anyway, so together the whole UI context is restored.
+    var currentScreen by rememberSaveable { mutableStateOf("home") } // home, explorer, downloads, settings
+    var previousScreen by rememberSaveable { mutableStateOf("home") }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // App-level feedback bus -> single SnackbarHost. Undo-style messages carry
+    // their action callback inside the UiMessage payload.
+    LaunchedEffect(Unit) {
+        UiMessenger.messages.collect { message ->
+            val hasAction = message.actionLabel != null
+            val result = snackbarHostState.showSnackbar(
+                message = message.text,
+                actionLabel = message.actionLabel,
+                duration = if (hasAction) SnackbarDuration.Long else SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                message.onAction?.invoke()
+            }
+        }
+    }
     val openSettings = {
         if (currentScreen != "settings") previousScreen = currentScreen
         currentScreen = "settings"
@@ -273,6 +299,7 @@ fun MainAppScreen(
 
         Scaffold(
         modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             if (activeMediaItem == null && currentScreen != "explorer") {
                 TopAppBar(

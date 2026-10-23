@@ -95,6 +95,14 @@ class CloudMailRuRepository(
         savedLinkDao.deleteById(id)
     }
 
+    /**
+     * Re-inserts a previously deleted entity keeping its original id
+     * (INSERT REPLACE), used by the undo-delete snackbar action.
+     */
+    suspend fun restoreLink(entity: SavedLinkEntity) = withContext(Dispatchers.IO) {
+        savedLinkDao.insertLink(entity)
+    }
+
     suspend fun toggleFavorite(id: Long, isFavorite: Boolean) = withContext(Dispatchers.IO) {
         savedLinkDao.setFavorite(id, isFavorite)
     }
