@@ -1,10 +1,14 @@
 package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
+// Top-level AnimatedVisibility (inside a Box nested in a Column the ColumnScope
+// overload would otherwise win the implicit-receiver resolution).
+import androidx.compose.animation.AnimatedVisibility as OverlayVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -40,26 +44,25 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.outlined.FolderOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -88,6 +91,7 @@ import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.components.FileItemCard
 import com.example.ui.components.ContentStatePanel
 import com.example.ui.components.FolderSkeletonPlaceholder
+import com.example.ui.components.expressive.MorphingIconButton
 import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.viewmodel.DownloadViewModel
 import com.example.ui.theme.UiMotionTokens
@@ -158,20 +162,17 @@ fun FolderExplorerScreen(
                         .padding(horizontal = UiSpacing.small, vertical = UiSpacing.iconGap),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
+                    MorphingIconButton(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Назад",
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = {
                             if (!viewModel.navigateBack()) {
                                 onBack()
                             }
                         },
                         modifier = Modifier.testTag("explorer_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    )
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -193,28 +194,22 @@ fun FolderExplorerScreen(
                     }
 
                     // Toggle Grid/List
-                    IconButton(
+                    MorphingIconButton(
+                        imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                        contentDescription = "Сменить вид",
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = { viewModel.toggleGridView() },
                         modifier = Modifier.testTag("toggle_view_mode")
-                    ) {
-                        Icon(
-                            imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                            contentDescription = "Сменить вид",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    )
 
                     Box {
-                        IconButton(
+                        MorphingIconButton(
+                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            contentDescription = "Сортировка: ${fileSortOrder.title}",
+                            contentColor = MaterialTheme.colorScheme.onSurface,
                             onClick = { isSortMenuExpanded = true },
                             modifier = Modifier.testTag("explorer_sort_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Sort,
-                                contentDescription = "Сортировка: ${fileSortOrder.title}",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        )
                         DropdownMenu(
                             expanded = isSortMenuExpanded,
                             onDismissRequest = { isSortMenuExpanded = false }
@@ -236,18 +231,15 @@ fun FolderExplorerScreen(
                     }
 
                     // Refresh
-                    IconButton(
+                    MorphingIconButton(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Обновить",
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         onClick = {
                             currentFolder?.weblinkKey?.let { viewModel.loadFolder(it, resetStack = false) }
                         },
                         modifier = Modifier.testTag("refresh_folder")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Обновить",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    )
                 }
 
                 // Breadcrumbs trail
@@ -277,69 +269,6 @@ fun FolderExplorerScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Selection Action Bar
-        AnimatedVisibility(
-            visible = isSelectionMode,
-            enter = fadeIn(
-                animationSpec = tween(
-                    durationMillis = UiMotionTokens.shortDurationMillis,
-                    easing = UiMotionTokens.standardEasing
-                )
-            ),
-            exit = fadeOut(
-                animationSpec = tween(
-                    durationMillis = UiMotionTokens.shortDurationMillis,
-                    easing = UiMotionTokens.standardEasing
-                )
-            )
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = UiSpacing.large, vertical = UiSpacing.small),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { viewModel.clearSelection() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Отмена")
-                        }
-                        Text(
-                            text = "Выбрано: ${selectedItems.size}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-
-                    Row {
-                        IconButton(onClick = { viewModel.selectAllFiles() }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "Выбрать все")
-                        }
-                        Button(
-                            onClick = {
-                                val itemsToDownload = (currentFolder?.items ?: emptyList()).filter {
-                                    selectedItems.contains(it.weblink) && !it.isFolder
-                                }
-                                downloadViewModel.downloadBatch(itemsToDownload)
-                                viewModel.clearSelection()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(UiSpacing.iconGap))
-                            Text("Скачать", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -377,7 +306,7 @@ fun FolderExplorerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("explorer_search_field"),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
@@ -396,7 +325,7 @@ fun FolderExplorerScreen(
                             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(999.dp),
                         modifier = Modifier.testTag("explorer_filter_$chip")
                     )
             }
@@ -410,7 +339,6 @@ fun FolderExplorerScreen(
         ) {
             val isInitialLoad = isLoading && currentFolder == null
             val isRefreshing = isLoading && currentFolder != null
-
             when {
                 isInitialLoad -> {
                     // Skeleton placeholders instead of a dead spinner: the
@@ -543,6 +471,121 @@ fun FolderExplorerScreen(
                     }
                 }
             }
+
+            // Material 3 Expressive floating selection toolbar (canonical
+            // HorizontalFloatingToolbar) with a SplitButton for batch download.
+            SelectionToolbarOverlay(
+                visible = isSelectionMode,
+                selectedCount = selectedItems.size,
+                onClose = { viewModel.clearSelection() },
+                onSelectAll = { viewModel.selectAllFiles() },
+                onClearSelection = { viewModel.clearSelection() },
+                onDownloadSelected = {
+                    val itemsToDownload = (currentFolder?.items ?: emptyList()).filter {
+                        selectedItems.contains(it.weblink) && !it.isFolder
+                    }
+                    downloadViewModel.downloadBatch(itemsToDownload)
+                    viewModel.clearSelection()
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(UiSpacing.extraLarge)
+            )
+        }
+    }
+}
+
+/**
+ * Material 3 Expressive floating selection toolbar: canonical
+ * [HorizontalFloatingToolbar] with a [SplitButtonLayout] for batch download.
+ * Extracted into a top-level composable so the top-level AnimatedVisibility
+ * overload wins over the ColumnScope one.
+ */
+@Composable
+private fun SelectionToolbarOverlay(
+    visible: Boolean,
+    selectedCount: Int,
+    onClose: () -> Unit,
+    onSelectAll: () -> Unit,
+    onClearSelection: () -> Unit,
+    onDownloadSelected: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val downloadMenuExpanded = remember { mutableStateOf(false) }
+    OverlayVisibility(
+        visible = visible,
+        enter = fadeIn(
+            animationSpec = tween(
+                durationMillis = UiMotionTokens.shortDurationMillis,
+                easing = UiMotionTokens.standardEasing
+            )
+        ) + slideInVertically(
+            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+            initialOffsetY = { fullHeight -> fullHeight / 2 }
+        ),
+        exit = fadeOut(
+            animationSpec = tween(
+                durationMillis = UiMotionTokens.shortDurationMillis,
+                easing = UiMotionTokens.standardEasing
+            )
+        ) + slideOutVertically(
+            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+            targetOffsetY = { fullHeight -> fullHeight / 2 }
+        ),
+        modifier = modifier
+    ) {
+        HorizontalFloatingToolbar(expanded = true) {
+            MorphingIconButton(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Отмена",
+                onClick = onClose
+            )
+
+            Text(
+                text = "$selectedCount выбрано",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = UiSpacing.small)
+            )
+
+            SplitButtonLayout(
+                leadingButton = {
+                    SplitButtonDefaults.LeadingButton(onClick = onDownloadSelected) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(UiSpacing.iconGap))
+                        Text("Скачать", fontWeight = FontWeight.Bold)
+                    }
+                },
+                trailingButton = {
+                    SplitButtonDefaults.TrailingButton(
+                        checked = downloadMenuExpanded.value,
+                        onCheckedChange = { downloadMenuExpanded.value = it }
+                    ) {
+                        Icon(Icons.Default.ExpandMore, contentDescription = "Ещё действия")
+                    }
+                    DropdownMenu(
+                        expanded = downloadMenuExpanded.value,
+                        onDismissRequest = { downloadMenuExpanded.value = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Выбрать все") },
+                            leadingIcon = { Icon(Icons.Default.SelectAll, contentDescription = null) },
+                            onClick = {
+                                onSelectAll()
+                                downloadMenuExpanded.value = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Снять выделение") },
+                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) },
+                            onClick = {
+                                onClearSelection()
+                                downloadMenuExpanded.value = false
+                            }
+                        )
+                    }
+                }
+            )
         }
     }
 }

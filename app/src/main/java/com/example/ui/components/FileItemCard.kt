@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.CloudItem
+import com.example.ui.components.expressive.MorphingIconButton
 import com.example.ui.theme.UiSpacing
 
 @Composable
@@ -216,18 +217,17 @@ private fun FileGridItem(
 
             // Top-right selection or download badge
             if (isSelectionMode) {
-                IconButton(
+                // Material 3 Expressive: the check morphs circle -> cookie on press.
+                MorphingIconButton(
+                    imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                    contentDescription = if (isSelected) "Снять выделение" else "Выбрать файл",
+                    containerColor = if (isSelected) Color.Transparent else Color(0x80000000),
+                    contentColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
                     onClick = onClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(UiSpacing.micro)
-                ) {
-                    Icon(
-                        imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
-                        contentDescription = if (isSelected) "Снять выделение" else "Выбрать файл",
-                        tint = if (isSelected) MaterialTheme.colorScheme.primary else Color.White
-                    )
-                }
+                )
             } else if (!item.isFolder) {
                 IconButton(
                     onClick = onDownloadClick,

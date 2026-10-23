@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.ui.components.expressive.ExpressiveLoadingIndicator
 import com.example.ui.theme.UiSpacing
 
 /** A consistent, accessible content state for loading, empty and recoverable error screens. */
@@ -39,11 +39,8 @@ fun ContentStatePanel(
         verticalArrangement = Arrangement.Center
     ) {
         if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(40.dp),
-                strokeWidth = 4.dp,
-                color = MaterialTheme.colorScheme.primary
-            )
+            // Material 3 Expressive shape-shifting loader (canonical LoadingIndicator).
+            ExpressiveLoadingIndicator(modifier = Modifier.size(48.dp))
         } else if (icon != null) {
             Icon(
                 imageVector = icon,

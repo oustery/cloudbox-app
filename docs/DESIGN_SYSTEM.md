@@ -121,3 +121,48 @@ Material 3; динамические цвета Material You остаются в
 4. Золотой (`tertiary`) — только семантика «избранное/награда», не для кнопок.
 5. Плеер сохраняет фиксированный `PlayerAccent = BrandAccent`: контраст поверх видео
    в обеих темах проверен.
+
+## 7. Material 3 Expressive
+
+Приложение использует полный канон Material 3 Expressive (Jetpack Compose
+`material3:1.5.0-beta02` — первая линия, где Google собрал весь канон
+компонентов; theme/motion-часть канона стабильна с 1.4.0).
+
+### 7.1 Движение
+
+- `MaterialExpressiveTheme(motionScheme = MotionScheme.expressive())` —
+  пружинная физика для всех тематических компонентов (FAB-меню, чипы,
+  диалоги, SplitButton).
+- Кастомные анимации обязаны брать спецификации из
+  `MaterialTheme.motionScheme` (`fastSpatialSpec`, `defaultSpatialSpec`, ...),
+  а не изобретать свои tween-кривые. Tween остаётся только для fade-фаз.
+
+### 7.2 Формы
+
+- Канонический corner-scale в `CloudBoxShapes`:
+  extraSmall 4 / small 8 / medium 12 / large 16 / extraLarge 28.
+- Морфинг форм — через `MaterialShapes` + `Morph` (graphics-shapes):
+  обёртки в `ui/components/expressive/Expressive.kt`
+  (`MorphPolygonShape`, `MorphingIconButton`). Каноничный паттерн:
+  круг → 12-стороннее печенье при нажатии; морф заменяет ripple.
+
+### 7.3 Канонические компоненты и их места
+
+| Компонент | Где используется |
+| --- | --- |
+| `LoadingIndicator` (морфинг фигур) | состояния загрузки `ContentStatePanel` |
+| `LinearWavyProgressIndicator` | прогресс загрузок в `DownloadsScreen` |
+| `CircularWavyProgressIndicator` | буферизация плеера, баннер обновления |
+| `HorizontalFloatingToolbar` | панель действий режима выделения в проводнике |
+| `SplitButtonLayout` | «Скачать» + меню (выбрать всё / снять) в тулбаре |
+| `MorphingIconButton` (кастом) | шапка проводника, чек-контрол карточек |
+
+### 7.4 Правила
+
+1. Не заменять канонические компоненты самодельными, если они есть в
+   библиотеке; самодельные — только надстройки над `MaterialShapes`/`Morph`.
+2. Новый wavy-прогресс не задаёт `height` — высоту рисует сам компонент.
+3. Экспериментальные API (`LoadingIndicator`, `MaterialShapes`, `Morph.toPath`)
+   используются только с явным `@OptIn(ExperimentalMaterial3ExpressiveApi::class)`
+   на самом узком скоупе.
+4. Поисковое поле — 28dp, фильтр-чипы — pill: закреплённый expressive-вид.

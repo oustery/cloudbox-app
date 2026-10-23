@@ -62,7 +62,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import com.example.ui.components.expressive.WavyCircularProgress
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -668,7 +668,8 @@ private fun VideoPlayerContent(
         }
 
         if (isBuffering && videoError == null) {
-            CircularProgressIndicator(
+            // Material 3 Expressive circular wavy buffering indicator.
+            WavyCircularProgress(
                 color = PlayerAccent,
                 modifier = Modifier.align(Alignment.Center)
             )
@@ -1326,7 +1327,7 @@ private fun ZoomableImageContent(
         }
 
         if (isLoadingImage && !imageError) {
-            CircularProgressIndicator(color = PlayerAccent)
+            WavyCircularProgress(color = PlayerAccent)
         }
 
         if (imageError) {
