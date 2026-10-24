@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.api.CloudUrlParser
+import com.example.data.api.LinkProvider
 import com.example.data.local.SavedLinkEntity
 import com.example.data.model.CloudItem
 import com.example.data.model.CloudItemSortOrder
@@ -250,7 +251,8 @@ class CloudLinkViewModel(
     }
 
     fun loadFolder(rawUrlOrWeblink: String, resetStack: Boolean = true) {
-        val weblink = CloudUrlParser.extractWeblink(rawUrlOrWeblink) ?: rawUrlOrWeblink
+        // Keep the canonical key: Mail.ru bare weblink key or normalized Yandex URL.
+        val weblink = CloudUrlParser.extractCloudKey(rawUrlOrWeblink) ?: rawUrlOrWeblink
         lastRequestedWeblink = weblink
         lastRequestResetStack = resetStack
         _isLoadingFolder.value = true
@@ -288,10 +290,11 @@ class CloudLinkViewModel(
 
                 // Auto-save to library if this is the root folder. The stored
                 // category and a user-set custom title are preserved.
+                val provider = LinkProvider.detectOrDefault(folderResult.weblinkKey)
                 val firstImage = folderResult.items.firstOrNull { it.isImage }
-                val thumbUrl = firstImage?.let { repository.getThumbnailUrl(it.weblink, ThumbnailSize.HIGH_RES) }
+                val thumbUrl = firstImage?.let { repository.getThumbnailUrl(it, ThumbnailSize.HIGH_RES) }
                 repository.saveLink(
-                    url = CloudUrlParser.toFullPublicUrl(folderResult.weblinkKey),
+                    url = CloudUrlParser.toFullUrl(provider, folderResult.weblinkKey),
                     title = folderResult.name,
                     itemCount = folderResult.items.size,
                     previewThumbnailUrl = thumbUrl,
@@ -472,7 +475,7 @@ class CloudLinkViewModel(
                         outcome.onSuccess { folder ->
                             val firstImage = folder.items.firstOrNull { it.isImage }
                             val thumbUrl = firstImage?.let {
-                                repository.getThumbnailUrl(it.weblink, ThumbnailSize.HIGH_RES)
+                                repository.getThumbnailUrl(it, ThumbnailSize.HIGH_RES)
                             }
                             repository.updateLinkStats(
                                 id = link.id,
@@ -540,7 +543,23 @@ class CloudLinkViewModel(
     fun getDownloadUrl(weblink: String): String = repository.getDownloadUrl(weblink)
     fun getThumbnailUrl(weblink: String, size: ThumbnailSize = ThumbnailSize.HIGH_RES): String =
         repository.getThumbnailUrl(weblink, size)
+
+    /** Provider-aware thumbnail: uses the embedded Yandex preview when present. */
+    fun getThumbnailUrl(item: CloudItem, size: ThumbnailSize = ThumbnailSize.HIGH_RES): String =
+        repository.getThumbnailUrl(item, size)
+
     fun getStreamingUrl(weblink: String): String = repository.getStreamingUrl(weblink)
+
+    /**
+     * Resolves a playable URL for the media viewer. Fast for Mail.ru (static
+     * shard), a signed-href API call for Yandex — call from a coroutine.
+     */
+    suspend fun resolveMediaUrl(item: CloudItem): String =
+        repository.resolveMediaUrl(item.weblink)
+
+    /** Resolves a downloadable URL for any provider; call from a coroutine. */
+    suspend fun resolveDownloadUrl(item: CloudItem): String =
+        repository.resolveDirectUrl(item.weblink)
 
     fun rememberVideoPosition(weblink: String, positionMs: Long) {
         if (positionMs > 0) videoResumePositions[weblink] = positionMs

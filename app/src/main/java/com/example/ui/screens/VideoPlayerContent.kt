@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -111,10 +112,24 @@ internal fun VideoPlayerContent(
     onToggleOverlay: () -> Unit
 ) {
     val context = LocalContext.current
-    val streamingUrl = viewModel.getStreamingUrl(item.weblink)
+    // Playable URL: instant for Mail.ru (static shard), a signed-href API call
+    // for Yandex — resolved asynchronously before the player is created.
+    var retryAttempt by remember(item.weblink) { mutableIntStateOf(0) }
+    var streamingUrl by remember(item.weblink) { mutableStateOf<String?>(null) }
+    var resolveError by remember(item.weblink) { mutableStateOf<String?>(null) }
+    LaunchedEffect(item.weblink, retryAttempt) {
+        resolveError = null
+        try {
+            streamingUrl = viewModel.resolveMediaUrl(item)
+        } catch (ce: kotlinx.coroutines.CancellationException) {
+            throw ce
+        } catch (t: Throwable) {
+            resolveError = t.localizedMessage ?: "Не удалось получить ссылку на воспроизведение"
+            streamingUrl = null
+        }
+    }
     var isBuffering by remember(item.weblink) { mutableStateOf(true) }
     var videoError by remember(item.weblink) { mutableStateOf<String?>(null) }
-    var retryAttempt by remember(item.weblink) { mutableIntStateOf(0) }
     var hasFirstFrame by remember(item.weblink) { mutableStateOf(false) }
 
     var isPlaying by remember(item.weblink) { mutableStateOf(false) }
@@ -135,7 +150,41 @@ internal fun VideoPlayerContent(
 
     val resumePosition = remember(item.weblink) { viewModel.getVideoResumePosition(item.weblink) }
 
-    val player = remember(item.weblink, retryAttempt) {
+    // Not resolved yet (or resolution failed): show the loading/error state and
+    // skip player creation entirely — everything below assumes a live player.
+    val resolvedUrl = streamingUrl
+    if (resolvedUrl == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            if (resolveError != null) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = resolveError ?: "",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = UiSpacing.extraLarge)
+                    )
+                    Spacer(Modifier.height(UiSpacing.medium))
+                    Button(onClick = { retryAttempt++ }) {
+                        Text("Повторить")
+                    }
+                }
+            } else {
+                WavyCircularProgress(
+                    color = PlayerAccent,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+        }
+        return
+    }
+    val streamingUrlResolved: String = resolvedUrl
+
+    val player = remember(item.weblink, retryAttempt, streamingUrlResolved) {
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(PLAYER_USER_AGENT)
             .setAllowCrossProtocolRedirects(true)
@@ -170,7 +219,7 @@ internal fun VideoPlayerContent(
             .apply {
                 setMediaItem(
                     MediaItem.Builder()
-                        .setUri(streamingUrl)
+                        .setUri(streamingUrlResolved)
                         .build(),
                     resumePosition.takeIf { it > 3_000L } ?: C.TIME_UNSET
                 )
@@ -284,7 +333,7 @@ internal fun VideoPlayerContent(
         if (!hasFirstFrame) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.VIDEO_POSTER))
+                    .data(viewModel.getThumbnailUrl(item, ThumbnailSize.VIDEO_POSTER))
                     .crossfade(200)
                     .build(),
                 contentDescription = null,

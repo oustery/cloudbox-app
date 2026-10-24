@@ -202,9 +202,9 @@ class MainActivity : ComponentActivity() {
         }
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
-            val weblink = CloudUrlParser.extractWeblink(sharedText)
-            if (weblink != null) {
-                cloudViewModel.loadFolder(weblink)
+            val cloudKey = CloudUrlParser.extractCloudKey(sharedText)
+            if (cloudKey != null) {
+                cloudViewModel.loadFolder(cloudKey)
             }
         }
     }

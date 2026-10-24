@@ -558,8 +558,8 @@ fun FolderExplorerScreen(
                                     FileItemCard(
                                         item = item,
                                         thumbnailUrl = when {
-                                            item.isImage -> viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.HIGH_RES)
-                                            item.isVideo -> viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.VIDEO_POSTER)
+                                            item.isImage -> viewModel.getThumbnailUrl(item, ThumbnailSize.HIGH_RES)
+                                            item.isVideo -> viewModel.getThumbnailUrl(item, ThumbnailSize.VIDEO_POSTER)
                                             else -> null
                                         },
                                         isGrid = true,
@@ -606,7 +606,7 @@ fun FolderExplorerScreen(
                                     FileItemCard(
                                         item = item,
                                         thumbnailUrl = item.takeIf { it.isImage || it.isVideo }
-                                            ?.let { viewModel.getThumbnailUrl(it.weblink, ThumbnailSize.SMALL) },
+                                            ?.let { viewModel.getThumbnailUrl(it, ThumbnailSize.SMALL) },
                                         isGrid = false,
                                         isSelected = isSelected,
                                         isSelectionMode = isSelectionMode,

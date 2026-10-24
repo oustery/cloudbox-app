@@ -60,7 +60,7 @@ internal fun ZoomableImageContent(
     var retryAttempt by remember(item.weblink) { mutableIntStateOf(0) }
 
     // High-resolution preview token; the source file itself is rarely needed.
-    val imageUrl = viewModel.getThumbnailUrl(item.weblink, ThumbnailSize.HIGH_RES)
+    val imageUrl = viewModel.getThumbnailUrl(item, ThumbnailSize.HIGH_RES)
 
     Box(
         modifier = Modifier

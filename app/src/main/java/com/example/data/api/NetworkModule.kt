@@ -59,4 +59,15 @@ object NetworkModule {
             .build()
             .create(CloudMailRuApi::class.java)
     }
+
+    private const val YANDEX_BASE_URL = "https://cloud-api.yandex.net/"
+
+    val yandexApi: YandexDiskApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(YANDEX_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(YandexDiskApi::class.java)
+    }
 }

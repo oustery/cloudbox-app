@@ -18,7 +18,11 @@ data class CloudItem(
     @Json(name = "tree") val tree: String? = null,
     @Json(name = "duration") val durationSeconds: Long? = null,
     @Json(name = "video_duration") val videoDurationSeconds: Long? = null,
-    @Json(name = "duration_ms") val durationMilliseconds: Long? = null
+    @Json(name = "duration_ms") val durationMilliseconds: Long? = null,
+    // Yandex-only: ready-made time-limited preview URL embedded in the API
+    // response. Null for Mail.ru items, whose thumbnails are built from the
+    // thumb shard instead.
+    @Json(name = "preview_url") val previewUrl: String? = null
 ) {
     companion object {
         // Shared across all items: SimpleDateFormat construction is costly and these

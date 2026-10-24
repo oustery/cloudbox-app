@@ -101,7 +101,7 @@ fun LinkIntakeCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "https://cloud.mail.ru/public/...",
+                        text = "https://cloud.mail.ru/public/...  •  https://disk.yandex.ru/d/...",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -117,7 +117,7 @@ fun LinkIntakeCard(
                 onValueChange = onValueChange,
                 placeholder = {
                     Text(
-                        text = "Вставьте ссылку",
+                        text = "Ссылка Mail.ru или Яндекс.Диска",
                         maxLines = 1,
                         softWrap = false,
                         overflow = TextOverflow.Ellipsis
