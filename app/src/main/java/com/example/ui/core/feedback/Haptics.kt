@@ -8,6 +8,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
 
 /**
+ * Global on/off gate for tactile feedback, driven by the settings screen.
+ * Every [Haptics] instance consults it before touching the platform API, so a
+ * single preference flips the whole app at once without rewiring call sites.
+ */
+object HapticsGate {
+    @Volatile
+    var enabled: Boolean = true
+}
+
+/**
  * Thin haptics wrapper around the host [View]. Compose's own
  * [androidx.compose.ui.hapticfeedback.HapticFeedback] exposes only
  * LongPress/TextHandleMove on older compose-ui versions, so we speak to the
@@ -17,11 +27,13 @@ class Haptics(private val view: View) {
 
     /** Light tick for minor confirmations (favorite, enqueue, chip pick). */
     fun tick() {
+        if (!HapticsGate.enabled) return
         view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
     }
 
     /** Distinct "done" pulse where the platform supports it. */
     fun confirm() {
+        if (!HapticsGate.enabled) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
         } else {
@@ -31,6 +43,7 @@ class Haptics(private val view: View) {
 
     /** Distinct "rejected/wrong" pulse where the platform supports it. */
     fun reject() {
+        if (!HapticsGate.enabled) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             view.performHapticFeedback(HapticFeedbackConstants.REJECT)
         } else {

@@ -62,6 +62,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,6 +90,7 @@ import com.example.data.preferences.UiPrefs
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.DownloadRepository
 import com.example.data.update.AppUpdateManager
+import com.example.ui.core.feedback.HapticsGate
 import com.example.ui.core.feedback.UiMessenger
 import com.example.ui.screens.DownloadsScreen
 import com.example.ui.screens.FolderExplorerScreen
@@ -238,9 +240,17 @@ fun MainAppScreen(
     // rememberSaveable: screen survives rotation and process recreation;
     // ViewModel-owned state (open folder, filters, selection) survives config
     // changes anyway, so together the whole UI context is restored.
-    var currentScreen by rememberSaveable { mutableStateOf("home") } // home, explorer, downloads, settings
+    var currentScreenOverride by rememberSaveable { mutableStateOf<String?>(null) }
     var previousScreen by rememberSaveable { mutableStateOf("home") }
+    // Cold start lands on the user-configured start screen until the first
+    // explicit navigation writes an override (survives rotation via Saveable).
+    val currentScreen = currentScreenOverride ?: settings.startScreen.key
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Settings-driven global switches applied once per settings change.
+    SideEffect {
+        HapticsGate.enabled = settings.hapticsEnabled
+    }
 
     // App-level feedback bus -> single SnackbarHost. Undo-style messages carry
     // their action callback inside the UiMessage payload.
@@ -259,27 +269,24 @@ fun MainAppScreen(
     }
     val openSettings = {
         if (currentScreen != "settings") previousScreen = currentScreen
-        currentScreen = "settings"
+        currentScreenOverride = "settings"
     }
     val activeDownloadsCount by downloadViewModel.activeCount.collectAsStateWithLifecycle()
     val currentFolder by cloudViewModel.currentFolder.collectAsStateWithLifecycle()
     val activeMediaItem by cloudViewModel.activeMediaItem.collectAsStateWithLifecycle()
     val isImeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
-    val explorerGridView by settingsViewModel.explorerGridView.collectAsStateWithLifecycle()
-    val explorerGridDensity by settingsViewModel.explorerGridDensity.collectAsStateWithLifecycle()
-
     // When folder finishes loading, switch to explorer screen
     LaunchedEffect(currentFolder) {
         if (currentFolder != null && currentScreen == "home") {
-            currentScreen = "explorer"
+            currentScreenOverride = "explorer"
         }
     }
 
     // External navigation request (e.g. tapping the download notification)
     LaunchedEffect(pendingScreen) {
         if (pendingScreen != null) {
-            currentScreen = pendingScreen
+            currentScreenOverride = pendingScreen
             onPendingScreenConsumed()
         }
     }
@@ -335,7 +342,7 @@ fun MainAppScreen(
                     actions = {
                         // Quick Downloads shortcut icon in header
                         IconButton(
-                            onClick = { currentScreen = "downloads" },
+                            onClick = { currentScreenOverride = "downloads" },
                             modifier = Modifier.testTag("topbar_downloads_button")
                         ) {
                             BadgedBox(
@@ -379,7 +386,7 @@ fun MainAppScreen(
                 ) {
                     NavigationBarItem(
                         selected = currentScreen == "home",
-                        onClick = { currentScreen = "home" },
+                        onClick = { currentScreenOverride = "home" },
                         icon = {
                             Icon(
                                 imageVector = if (currentScreen == "home") Lucide.House else Lucide.House,
@@ -408,7 +415,7 @@ fun MainAppScreen(
 
                     NavigationBarItem(
                         selected = currentScreen == "explorer",
-                        onClick = { currentScreen = "explorer" },
+                        onClick = { currentScreenOverride = "explorer" },
                         icon = {
                             Icon(
                                 imageVector = if (currentScreen == "explorer") Lucide.Folder else Lucide.Folder,
@@ -437,7 +444,7 @@ fun MainAppScreen(
 
                     NavigationBarItem(
                         selected = currentScreen == "downloads",
-                        onClick = { currentScreen = "downloads" },
+                        onClick = { currentScreenOverride = "downloads" },
                         icon = {
                             BadgedBox(
                                 badge = {
@@ -528,7 +535,7 @@ fun MainAppScreen(
                 ) {
                     NavigationRailItem(
                         selected = currentScreen == "home",
-                        onClick = { currentScreen = "home" },
+                        onClick = { currentScreenOverride = "home" },
                         icon = {
                             Icon(
                                 imageVector = if (currentScreen == "home") Lucide.House else Lucide.House,
@@ -546,7 +553,7 @@ fun MainAppScreen(
                     )
                     NavigationRailItem(
                         selected = currentScreen == "explorer",
-                        onClick = { currentScreen = "explorer" },
+                        onClick = { currentScreenOverride = "explorer" },
                         icon = {
                             Icon(
                                 imageVector = if (currentScreen == "explorer") Lucide.Folder else Lucide.Folder,
@@ -564,7 +571,7 @@ fun MainAppScreen(
                     )
                     NavigationRailItem(
                         selected = currentScreen == "downloads",
-                        onClick = { currentScreen = "downloads" },
+                        onClick = { currentScreenOverride = "downloads" },
                         icon = {
                             BadgedBox(
                                 badge = {
@@ -623,15 +630,16 @@ fun MainAppScreen(
                     "home" -> {
                         HomeScreen(
                             viewModel = cloudViewModel,
+                            autoUpdateCheck = settings.autoUpdateCheck,
                             onOpenFolder = { weblink ->
                                 cloudViewModel.loadFolder(weblink)
-                                currentScreen = "explorer"
+                                currentScreenOverride = "explorer"
                             },
                             onOpenPool = {
                                 // Drop any stale open folder; the explorer
                                 // auto-loads the unified pool when empty.
                                 cloudViewModel.closeFolder()
-                                currentScreen = "explorer"
+                                currentScreenOverride = "explorer"
                             }
                         )
                     }
@@ -639,25 +647,20 @@ fun MainAppScreen(
                         FolderExplorerScreen(
                             viewModel = cloudViewModel,
                             downloadViewModel = downloadViewModel,
-                            onBack = { currentScreen = "home" }
+                            dataSaver = settings.dataSaver,
+                            onBack = { currentScreenOverride = "home" }
                         )
                     }
                     "downloads" -> {
                         DownloadsScreen(
                             viewModel = downloadViewModel,
-                            onBack = { currentScreen = "home" }
+                            onBack = { currentScreenOverride = "home" }
                         )
                     }
                     "settings" -> {
                         SettingsScreen(
-                            settings = settings,
-                            explorerGridView = explorerGridView,
-                            explorerGridDensity = explorerGridDensity,
-                            onThemeModeChanged = settingsViewModel::setThemeMode,
-                            onDynamicColorsChanged = settingsViewModel::setDynamicColors,
-                            onExplorerGridViewChanged = settingsViewModel::setExplorerGridView,
-                            onExplorerGridDensityChanged = settingsViewModel::setExplorerGridDensity,
-                            onBack = { currentScreen = previousScreen }
+                            settingsViewModel = settingsViewModel,
+                            onBack = { currentScreenOverride = previousScreen }
                         )
                     }
                 }
