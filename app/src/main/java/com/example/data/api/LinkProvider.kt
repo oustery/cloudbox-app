@@ -13,7 +13,8 @@ package com.example.data.api
  */
 enum class LinkProvider(val label: String, val shortLabel: String) {
     MAILRU("Облако Mail.ru", "М"),
-    YANDEX("Яндекс Диск", "Я");
+    YANDEX("Яндекс Диск", "Я"),
+    MEGA("Mega.nz", "M");
 
     companion object {
         /**
@@ -23,6 +24,9 @@ enum class LinkProvider(val label: String, val shortLabel: String) {
         fun detect(input: String): LinkProvider? {
             val lower = input.lowercase()
             return when {
+                // Composite MEGA keys start with "mega:" / "megafile:".
+                lower.startsWith("mega:") || lower.startsWith("megafile:") -> MEGA
+                lower.contains("mega.nz") || lower.contains("mega.co.nz") || lower.contains("mega.io") -> MEGA
                 lower.contains("yadi.sk") || lower.contains("yandex") -> YANDEX
                 lower.contains("cloud.mail.ru") || lower.contains("mail.ru") -> MAILRU
                 else -> null

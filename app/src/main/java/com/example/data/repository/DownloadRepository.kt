@@ -99,11 +99,15 @@ class DownloadRepository private constructor(
     fun enqueueDownload(item: CloudItem, customName: String? = null) {
         val fileName = sanitizeFileName(customName ?: item.name)
         val taskId = UUID.randomUUID().toString()
+        val isMega = CloudMailRuRepository.providerOf(item.weblink) == LinkProvider.MEGA
 
         repositoryScope.launch {
             // Yandex hrefs are signed and must be resolved via the public API;
-            // Mail.ru URLs are built synchronously from the shard.
-            val downloadUrl = try {
+            // Mail.ru URLs are built synchronously from the shard; MEGA resolves
+            // a fresh one-time URL per attempt inside runDownloadAttempt.
+            val downloadUrl = if (isMega) {
+                ""
+            } else try {
                 cloudRepository.resolveDirectUrl(item.weblink)
             } catch (ce: CancellationException) {
                 throw ce
@@ -172,10 +176,12 @@ class DownloadRepository private constructor(
             val task = downloadDao.getTaskById(id) ?: return@launch
             if (task.status == DownloadStatus.DOWNLOADING.name || task.status == DownloadStatus.QUEUED.name) return@launch
             // Signed Yandex hrefs expire; re-resolve them before resuming.
-            val url = if (CloudMailRuRepository.providerOf(task.weblink) == LinkProvider.YANDEX) {
-                runCatching { cloudRepository.resolveDirectUrl(task.weblink) }.getOrNull() ?: task.downloadUrl
-            } else {
-                task.downloadUrl
+            // MEGA resolves inside the attempt (encrypted one-time URL).
+            val url = when (CloudMailRuRepository.providerOf(task.weblink)) {
+                LinkProvider.YANDEX ->
+                    runCatching { cloudRepository.resolveDirectUrl(task.weblink) }.getOrNull() ?: task.downloadUrl
+                LinkProvider.MEGA -> task.downloadUrl // unused; resolved per attempt
+                LinkProvider.MAILRU -> task.downloadUrl
             }
             startTask(id, url, task.fileName, task.fileSize, task.downloadedBytes)
             DownloadService.start(appContext)
@@ -236,7 +242,14 @@ class DownloadRepository private constructor(
                     } catch (e: Exception) {
                         // Persist whatever bytes we already got so the next attempt
                         // resumes instead of restarting the multi-hundred-MB file.
-                        resumeFrom = targetFile.length().coerceAtLeast(0L)
+                        // MEGA streams cannot resume (CTR keystream + one-time URLs).
+                        val isMegaTask = downloadDao.getTaskById(taskId)
+                            ?.let { CloudMailRuRepository.providerOf(it.weblink) } == LinkProvider.MEGA
+                        resumeFrom = if (isMegaTask) {
+                            0L
+                        } else {
+                            targetFile.length().coerceAtLeast(0L)
+                        }
                         if (attempt >= MAX_ATTEMPTS) {
                             Log.e(TAG, "Download failed after $attempt attempts: ${e.message}", e)
                             downloadDao.setFailed(
@@ -280,6 +293,37 @@ class DownloadRepository private constructor(
         expectedSize: Long,
         startByte: Long
     ) {
+        val task = downloadDao.getTaskById(taskId)
+            ?: throw IllegalStateException("Задача загрузки не найдена")
+        val isMega = CloudMailRuRepository.providerOf(task.weblink) == LinkProvider.MEGA
+
+        if (isMega) {
+            // MEGA: fresh one-time URL per attempt + on-the-fly AES-CTR
+            // decryption with MAC verification at completion. No ranges —
+            // the CTR keystream cannot be resumed mid-stream.
+            val mega = CloudMegaRepository()
+            val target = mega.resolveDownloadTarget(task.weblink)
+            val request = Request.Builder().url(target.tempUrl).build()
+            NetworkModule.okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    downloadDao.setFailed(
+                        taskId,
+                        DownloadStatus.FAILED.name,
+                        "HTTP ${response.code}: ${response.message}"
+                    )
+                    return
+                }
+                val body = response.body
+                    ?: run {
+                        downloadDao.setFailed(taskId, DownloadStatus.FAILED.name, "Пустой ответ от сервера")
+                        return
+                    }
+                val decrypted = mega.decryptStream(body.byteStream(), target)
+                writeStream(taskId, decrypted, targetFile, expectedSize, 0L, append = false)
+            }
+            return
+        }
+
         var inputStream: InputStream? = null
         var outputStream: FileOutputStream? = null
 
@@ -349,6 +393,47 @@ class DownloadRepository private constructor(
             try {
                 outputStream?.close()
             } catch (ignored: Exception) {}
+        }
+    }
+
+    /** Copies a prepared (possibly decrypting) stream into [targetFile] with progress reporting. */
+    private suspend fun writeStream(
+        taskId: String,
+        stream: InputStream,
+        targetFile: File,
+        expectedSize: Long,
+        startOffset: Long,
+        append: Boolean
+    ) {
+        stream.use { input ->
+            FileOutputStream(targetFile, append).use { outputStream ->
+                val buffer = ByteArray(BUFFER_SIZE)
+                var bytesRead: Int
+                var currentDownloaded = startOffset
+                var lastUpdateTime = System.currentTimeMillis()
+                var bytesSinceLastUpdate = 0L
+
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+                    coroutineContext.ensureActive()
+
+                    outputStream.write(buffer, 0, bytesRead)
+                    currentDownloaded += bytesRead
+                    bytesSinceLastUpdate += bytesRead
+
+                    val now = System.currentTimeMillis()
+                    val timeDiff = now - lastUpdateTime
+                    if (timeDiff >= 500) {
+                        val speedBps = (bytesSinceLastUpdate * 1000) / timeDiff
+                        downloadDao.updateProgress(taskId, currentDownloaded, speedBps, DownloadStatus.DOWNLOADING.name)
+                        lastUpdateTime = now
+                        bytesSinceLastUpdate = 0L
+                    }
+                }
+
+                outputStream.flush()
+                downloadDao.setCompleted(taskId, DownloadStatus.COMPLETED.name, targetFile.absolutePath)
+                Log.d(TAG, "Download completed: ${targetFile.absolutePath}")
+            }
         }
     }
 

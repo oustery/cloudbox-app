@@ -9,6 +9,25 @@ import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.composables.icons.lucide.Film
+import com.composables.icons.lucide.Lucide
+import com.example.data.model.CloudItem
+import com.example.ui.theme.UiSpacing
 import com.example.ui.theme.BrandAccent
 import androidx.compose.ui.graphics.Color
 
@@ -75,4 +94,47 @@ internal fun formatTimeMs(ms: Long): String {
     val seconds = totalSeconds % 60
     return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds)
     else "%d:%02d".format(minutes, seconds)
+}
+
+/**
+ * Placeholder shown instead of the video player when a MEGA item cannot be
+ * streamed (client-side encrypted content; no local decrypting proxy yet).
+ * Offers the download action so the file is still reachable in two taps.
+ */
+@Composable
+internal fun MegaVideoFallback(
+    item: CloudItem,
+    modifier: Modifier = Modifier,
+    onDownload: () -> Unit
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(UiSpacing.medium),
+            modifier = Modifier.padding(UiSpacing.doubleExtraLarge)
+        ) {
+            Icon(
+                imageVector = Lucide.Film,
+                contentDescription = null,
+                tint = PlayerAccent,
+                modifier = Modifier.size(56.dp)
+            )
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = PlayerOnSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "Просмотр видео из Mega появится позже. Файл можно скачать и открыть локально.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = PlayerOnSurface.copy(alpha = 0.8f),
+                textAlign = TextAlign.Center
+            )
+            Button(onClick = onDownload) {
+                Text("Скачать файл")
+            }
+        }
+    }
 }

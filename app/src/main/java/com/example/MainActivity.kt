@@ -71,7 +71,8 @@ class MainActivity : ComponentActivity() {
         CloudLinkViewModelFactory(
             repository = repo,
             uiPrefs = UiPrefs(applicationContext),
-            archiveRepository = ArchiveRepository.getInstance(applicationContext)
+            archiveRepository = ArchiveRepository.getInstance(applicationContext),
+            cacheDir = applicationContext.cacheDir
         )
     }
 

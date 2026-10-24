@@ -61,6 +61,12 @@ object CloudUrlParser {
     fun toFullUrl(provider: LinkProvider, weblink: String): String = when (provider) {
         LinkProvider.YANDEX -> weblink
         LinkProvider.MAILRU -> toFullPublicUrl(weblink)
+        LinkProvider.MEGA -> {
+            val identity = com.example.data.api.mega.MegaLinks.parseIdentity(weblink)
+                ?: com.example.data.api.mega.MegaLinks.parse(weblink)
+                    ?.let { com.example.data.api.mega.MegaLinks.parseIdentity(it.identityKey) }
+            identity?.let { com.example.data.api.mega.MegaLinks.toPublicUrl(it) } ?: weblink
+        }
     }
 
     /**
@@ -75,6 +81,14 @@ object CloudUrlParser {
         return when (LinkProvider.detect(trimmed)) {
             LinkProvider.YANDEX -> YandexUrlParser.normalize(trimmed)
             LinkProvider.MAILRU -> extractWeblink(trimmed)
+            LinkProvider.MEGA -> {
+                // Full mega URL -> composite identity key; composite keys pass through.
+                if (com.example.data.api.mega.MegaLinks.parseIdentity(trimmed) != null) {
+                    trimmed
+                } else {
+                    com.example.data.api.mega.MegaLinks.parse(trimmed)?.identityKey
+                }
+            }
             null -> {
                 // Bare Mail.ru key ("KVy7/S1hRRPVUE") carries no host hints.
                 if (extractWeblink(trimmed) != null) trimmed else null

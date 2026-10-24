@@ -39,6 +39,38 @@ class LinkProviderTest {
     }
 
     @Test
+    fun `detects mega domains and composite keys`() {
+        assertEquals(LinkProvider.MEGA, LinkProvider.detect("https://mega.nz/folder/6ap10KRI#1Hy41Yv2pcJmYhdJjmPJpw"))
+        assertEquals(LinkProvider.MEGA, LinkProvider.detect("https://mega.nz/file/DlggBbTY#fbKFn_qhA3hbthETgkipy_zV6RDarBgfnjp43cxpTzk"))
+        assertEquals(LinkProvider.MEGA, LinkProvider.detect("mega.nz/#!oMhDAAqC!XQqMb9u7oAKvYMYYRHYI_s870Y2wXR4bzlL4aQI1eps"))
+        // Composite identity keys produced by MegaLinks
+        assertEquals(LinkProvider.MEGA, LinkProvider.detect("mega:6ap10KRI:1Hy41Yv2pcJmYhdJjmPJpw"))
+        assertEquals(LinkProvider.MEGA, LinkProvider.detect("megafile:DlggBbTY:fbKFn_qhA3hbthETgkipy_zV6RDarBgfnjp43cxpTzk"))
+    }
+
+    @Test
+    fun `extractCloudKey normalizes mega urls to identity keys`() {
+        assertEquals(
+            "mega:6ap10KRI:1Hy41Yv2pcJmYhdJjmPJpw",
+            CloudUrlParser.extractCloudKey("https://mega.nz/folder/6ap10KRI#1Hy41Yv2pcJmYhdJjmPJpw")
+        )
+        assertEquals(
+            "megafile:DlggBbTY:fbKFn_qhA3hbthETgkipy_zV6RDarBgfnjp43cxpTzk",
+            CloudUrlParser.extractCloudKey("https://mega.nz/file/DlggBbTY#fbKFn_qhA3hbthETgkipy_zV6RDarBgfnjp43cxpTzk")
+        )
+        // Composite keys pass through unchanged
+        assertEquals(
+            "mega:6ap10KRI:1Hy41Yv2pcJmYhdJjmPJpw",
+            CloudUrlParser.extractCloudKey("mega:6ap10KRI:1Hy41Yv2pcJmYhdJjmPJpw")
+        )
+        // Scheme-less mega URLs are not swallowed by the Mail.ru fallback
+        assertEquals(
+            "mega:6ap10KRI:1Hy41Yv2pcJmYhdJjmPJpw",
+            CloudUrlParser.extractCloudKey("mega.nz/folder/6ap10KRI#1Hy41Yv2pcJmYhdJjmPJpw")
+        )
+    }
+
+    @Test
     fun `provider labels are non-blank`() {
         LinkProvider.values().forEach { provider ->
             assertEquals(false, provider.label.isBlank())

@@ -51,7 +51,8 @@ data class AggregatedEntry(
 class CloudLinkViewModel(
     private val repository: CloudMailRuRepository,
     private val uiPrefs: UiPrefs? = null,
-    private val archiveRepository: ArchiveRepository? = null
+    private val archiveRepository: ArchiveRepository? = null,
+    private val cacheDir: java.io.File? = null
 ) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow("Все")
@@ -246,6 +247,12 @@ class CloudLinkViewModel(
     }
 
     fun openMediaViewer(item: CloudItem, playlist: List<CloudItem>? = null) {
+        // MEGA videos cannot be streamed (client-side encryption, no local
+        // proxy yet) — surface a hint instead of a broken player.
+        if (isMegaItem(item.weblink) && item.isVideo) {
+            UiMessenger.show("Просмотр видео из Mega пока недоступен — скачайте файл")
+            return
+        }
         _mediaPlaylist.value = playlist
         _activeMediaItem.value = item
     }
@@ -593,6 +600,19 @@ class CloudLinkViewModel(
     suspend fun resolveMediaUrl(item: CloudItem): String =
         repository.resolveMediaUrl(item.weblink)
 
+    /** True when the item belongs to a MEGA shared link. */
+    fun isMegaItem(weblink: String): Boolean =
+        LinkProvider.detect(weblink) == LinkProvider.MEGA
+
+    /**
+     * Downloads a MEGA file into the app cache (small images for the viewer).
+     * Returns null when MEGA support is unavailable.
+     */
+    suspend fun resolveMegaPreview(item: CloudItem): java.io.File? {
+        val dir = cacheDir ?: return null
+        return repository.downloadMegaToCache(item, dir).getOrNull()
+    }
+
     /** Resolves a downloadable URL for any provider; call from a coroutine. */
     suspend fun resolveDownloadUrl(item: CloudItem): String =
         repository.resolveDirectUrl(item.weblink)
@@ -637,12 +657,13 @@ class CloudLinkViewModel(
 class CloudLinkViewModelFactory(
     private val repository: CloudMailRuRepository,
     private val uiPrefs: UiPrefs? = null,
-    private val archiveRepository: ArchiveRepository? = null
+    private val archiveRepository: ArchiveRepository? = null,
+    private val cacheDir: java.io.File? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CloudLinkViewModel::class.java)) {
-            return CloudLinkViewModel(repository, uiPrefs, archiveRepository) as T
+            return CloudLinkViewModel(repository, uiPrefs, archiveRepository, cacheDir) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
