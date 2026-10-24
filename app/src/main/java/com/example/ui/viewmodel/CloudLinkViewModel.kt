@@ -12,18 +12,21 @@ import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
 import com.example.data.repository.ThumbnailSize
 import com.example.data.preferences.GridDensity
+import com.example.data.preferences.LibrarySortOrder
 import com.example.data.preferences.UiPrefs
 import com.example.ui.core.feedback.UiMessenger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -57,13 +60,37 @@ class CloudLinkViewModel(
     private val _linkInput = MutableStateFlow("")
     val linkInput: StateFlow<String> = _linkInput.asStateFlow()
 
-    // Filtered saved links
+    // Library sort order (persisted); falls back to NEWEST when UiPrefs absent.
+    private val homeSortFlow: Flow<LibrarySortOrder> =
+        uiPrefs?.homeSortOrder ?: flowOf(LibrarySortOrder.NEWEST)
+
+    val homeSortOrder: StateFlow<LibrarySortOrder> = homeSortFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = LibrarySortOrder.NEWEST
+    )
+
+    fun setHomeSortOrder(order: LibrarySortOrder) {
+        uiPrefs?.let { prefs ->
+            viewModelScope.launch { prefs.setHomeSortOrder(order) }
+        }
+    }
+
+    // Full library snapshot for badge/counter computations (not filtered).
+    val allLinks: StateFlow<List<SavedLinkEntity>> = repository.allSavedLinks.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    // Filtered + sorted saved links
     val savedLinks: StateFlow<List<SavedLinkEntity>> = combine(
         repository.allSavedLinks,
         _selectedCategory,
-        _searchQuery
-    ) { links, category, query ->
-        links.filter { entity ->
+        _searchQuery,
+        homeSortFlow
+    ) { links, category, query, sort ->
+        val filtered = links.filter { entity ->
             val matchesCategory = when (category) {
                 "Все" -> true
                 "Избранное" -> entity.isFavorite
@@ -74,6 +101,12 @@ class CloudLinkViewModel(
                         entity.weblinkKey.contains(query, ignoreCase = true)
             }
             matchesCategory && matchesQuery
+        }
+        when (sort) {
+            LibrarySortOrder.NEWEST -> filtered.sortedByDescending { it.createdAt }
+            LibrarySortOrder.OLDEST -> filtered.sortedBy { it.createdAt }
+            LibrarySortOrder.NAME -> filtered.sortedBy { it.title.lowercase() }
+            LibrarySortOrder.MOST_FILES -> filtered.sortedByDescending { it.itemCount }
         }
     }.stateIn(
         scope = viewModelScope,
