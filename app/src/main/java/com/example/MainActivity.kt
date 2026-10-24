@@ -189,7 +189,8 @@ class MainActivity : ComponentActivity() {
 
             MyApplicationTheme(
                 darkTheme = darkTheme,
-                dynamicColor = settings.dynamicColors
+                dynamicColor = settings.dynamicColors,
+                appFont = settings.font
             ) {
                 MainAppScreen(
                     cloudViewModel = cloudViewModel,

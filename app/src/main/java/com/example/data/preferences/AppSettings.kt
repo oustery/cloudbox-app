@@ -24,6 +24,8 @@ private val startScreenKey = stringPreferencesKey("start_screen")
 private val hapticsEnabledKey = booleanPreferencesKey("haptics_enabled")
 private val dataSaverKey = booleanPreferencesKey("data_saver")
 private val autoUpdateCheckKey = booleanPreferencesKey("auto_update_check")
+private val fontKey = stringPreferencesKey("app_font")
+private val iconVariantKey = stringPreferencesKey("app_icon_variant")
 
 /**
  * Screen the app lands on after a cold start. Stored by [StartScreen.key];
@@ -51,13 +53,49 @@ enum class AppThemeMode(val title: String) {
     }
 }
 
+/**
+ * Typeface family used across the whole UI. Stored by [AppFont.key]; an
+ * unknown value (renamed enum, older build) falls back to INTER so startup
+ * never bricks.
+ */
+enum class AppFont(val key: String, val title: String) {
+    INTER("inter", "Inter"),
+    MANROPE("manrope", "Manrope"),
+    RUBIK("rubik", "Rubik"),
+    NUNITO("nunito", "Nunito"),
+    SYSTEM("system", "Системный");
+
+    companion object {
+        fun fromKey(value: String?): AppFont =
+            entries.firstOrNull { it.key == value } ?: INTER
+    }
+}
+
+/**
+ * Launcher icon look. The actual icon switching lives in
+ * [com.example.data.preferences.AppIconManager] via activity-alias components;
+ * this enum only names the choices and their persisted keys.
+ */
+enum class AppIconVariant(val key: String, val title: String) {
+    STANDARD("standard", "Стандартная"),
+    GRAPHITE("graphite", "Графит"),
+    FROST("frost", "Океан");
+
+    companion object {
+        fun fromKey(value: String?): AppIconVariant =
+            entries.firstOrNull { it.key == value } ?: STANDARD
+    }
+}
+
 data class AppSettings(
     val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     val dynamicColors: Boolean = true,
     val startScreen: StartScreen = StartScreen.HOME,
     val hapticsEnabled: Boolean = true,
     val dataSaver: Boolean = false,
-    val autoUpdateCheck: Boolean = true
+    val autoUpdateCheck: Boolean = true,
+    val font: AppFont = AppFont.INTER,
+    val iconVariant: AppIconVariant = AppIconVariant.STANDARD
 )
 
 private class AppSettingsRepository(context: Context) {
@@ -70,7 +108,9 @@ private class AppSettingsRepository(context: Context) {
             startScreen = StartScreen.fromKey(preferences[startScreenKey]),
             hapticsEnabled = preferences[hapticsEnabledKey] ?: true,
             dataSaver = preferences[dataSaverKey] ?: false,
-            autoUpdateCheck = preferences[autoUpdateCheckKey] ?: true
+            autoUpdateCheck = preferences[autoUpdateCheckKey] ?: true,
+            font = AppFont.fromKey(preferences[fontKey]),
+            iconVariant = AppIconVariant.fromKey(preferences[iconVariantKey])
         )
     }
 
@@ -96,6 +136,14 @@ private class AppSettingsRepository(context: Context) {
 
     suspend fun setAutoUpdateCheck(enabled: Boolean) {
         dataStore.edit { it[autoUpdateCheckKey] = enabled }
+    }
+
+    suspend fun setFont(font: AppFont) {
+        dataStore.edit { it[fontKey] = font.key }
+    }
+
+    suspend fun setIconVariant(variant: AppIconVariant) {
+        dataStore.edit { it[iconVariantKey] = variant.key }
     }
 }
 
@@ -144,6 +192,18 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setAutoUpdateCheck(enabled: Boolean) {
         viewModelScope.launch { repository.setAutoUpdateCheck(enabled) }
+    }
+
+    fun setFont(font: AppFont) {
+        viewModelScope.launch { repository.setFont(font) }
+    }
+
+    /** Persists the choice and flips the launcher alias components. */
+    fun setIconVariant(variant: AppIconVariant) {
+        viewModelScope.launch {
+            repository.setIconVariant(variant)
+            AppIconManager.apply(getApplication(), variant)
+        }
     }
 
     fun setExplorerGridView(isGrid: Boolean) {

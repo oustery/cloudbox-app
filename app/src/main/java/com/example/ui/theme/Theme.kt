@@ -11,10 +11,12 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import com.example.data.preferences.AppFont
 
 private val DarkColorScheme = darkColorScheme(
     primary = DarkPrimary,
@@ -108,6 +110,7 @@ private val CloudBoxShapes = Shapes(
 fun MyApplicationTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
+    appFont: AppFont = AppFont.INTER,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
@@ -119,13 +122,16 @@ fun MyApplicationTheme(
         else -> LightColorScheme
     }
 
+    // The whole type scale re-skins at once when the user picks a typeface.
+    val typography = remember(appFont) { buildTypography(appFont.toFontFamily()) }
+
     // Material 3 Expressive: spring-based physics motion for every themed
     // component (FAB menu, chips, dialogs...) plus the public motionScheme
     // API used by our custom components.
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),
-        typography = Typography,
+        typography = typography,
         shapes = CloudBoxShapes,
         content = content
     )

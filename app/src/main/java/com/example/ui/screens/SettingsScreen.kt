@@ -41,6 +41,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.imageLoader
 import com.example.BuildConfig
 import com.example.data.preferences.AppSettings
+import com.example.data.preferences.AppFont
+import com.example.data.preferences.AppIconVariant
 import com.example.data.preferences.AppThemeMode
 import com.example.data.preferences.GridDensity
 import com.example.data.preferences.StartScreen
@@ -50,6 +52,7 @@ import com.example.ui.components.AdaptiveChipGroup
 import com.example.ui.core.components.ConfirmDialog
 import com.example.ui.core.feedback.UiMessenger
 import com.example.ui.theme.UiSpacing
+import com.example.ui.theme.toFontFamily
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -171,6 +174,48 @@ fun SettingsScreen(
                 enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                 onCheckedChange = settingsViewModel::setDynamicColors
             )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SectionLabel("Шрифт интерфейса", "Отрисовывается мгновенно, применяется ко всем экранам.")
+            AdaptiveChipGroup(
+                items = AppFont.entries.toList(),
+                modifier = Modifier.fillMaxWidth()
+            ) { font ->
+                FilterChip(
+                    selected = settings.font == font,
+                    onClick = { settingsViewModel.setFont(font) },
+                    label = {
+                        Text(
+                            font.title,
+                            fontFamily = font.toFontFamily(),
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    modifier = Modifier.testTag("font_${font.key}")
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SectionLabel("Иконка приложения", "Лаунчер обновит значок через несколько секунд после выбора.")
+            AdaptiveChipGroup(
+                items = AppIconVariant.entries.toList(),
+                modifier = Modifier.fillMaxWidth()
+            ) { variant ->
+                FilterChip(
+                    selected = settings.iconVariant == variant,
+                    onClick = { settingsViewModel.setIconVariant(variant) },
+                    label = { Text(variant.title) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    modifier = Modifier.testTag("icon_variant_${variant.key}")
+                )
+            }
         }
 
         SettingsSection(title = "Проводник") {
