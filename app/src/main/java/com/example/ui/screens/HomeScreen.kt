@@ -195,7 +195,7 @@ fun HomeScreen(
         }
         val cloudKey = CloudUrlParser.extractCloudKey(candidate)
         if (cloudKey == null) {
-            inputError = "Поддерживаются ссылки Облака Mail.ru и Яндекс.Диска"
+            inputError = "Поддерживаются ссылки Mail.ru, Яндекс.Диска и Mega.nz"
             return
         }
         inputError = null

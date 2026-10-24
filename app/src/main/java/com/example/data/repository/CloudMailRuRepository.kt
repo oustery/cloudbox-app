@@ -6,6 +6,7 @@ import com.example.data.api.CloudUrlParser
 import com.example.data.api.LinkProvider
 import com.example.data.api.NetworkModule
 import com.example.data.api.YandexUrlParser
+import com.example.data.api.mega.MegaLinks
 import com.example.data.local.SavedLinkDao
 import com.example.data.local.SavedLinkEntity
 import com.example.data.model.CloudItem
@@ -63,6 +64,7 @@ class CloudMailRuRepository(
     private var cachedViewShard: String? = null
 
     private val yandexRepository = YandexDiskRepository()
+    private val megaRepository = CloudMegaRepository()
 
     val allSavedLinks: Flow<List<SavedLinkEntity>> = savedLinkDao.getAllSavedLinks()
 
@@ -90,6 +92,13 @@ class CloudMailRuRepository(
         val weblinkKey = when (providerOf(url)) {
             LinkProvider.YANDEX -> YandexUrlParser.normalize(url) ?: url
             LinkProvider.MAILRU -> CloudUrlParser.extractWeblink(url) ?: url
+            LinkProvider.MEGA -> {
+                if (MegaLinks.parseIdentity(url) != null) {
+                    url // already a composite identity key
+                } else {
+                    MegaLinks.parse(url)?.identityKey ?: url
+                }
+            }
         }
         val existing = savedLinkDao.getByWeblink(weblinkKey)
         if (existing != null) {
@@ -220,10 +229,10 @@ class CloudMailRuRepository(
      * Mail.ru items are built from the public thumb shard.
      */
     fun getThumbnailUrl(item: CloudItem, size: ThumbnailSize = ThumbnailSize.HIGH_RES): String {
-        return if (providerOf(item.weblink) == LinkProvider.YANDEX) {
-            yandexRepository.thumbnailUrl(item.previewUrl, size) ?: ""
-        } else {
-            getThumbnailUrl(item.weblink, size)
+        return when (providerOf(item.weblink)) {
+            LinkProvider.YANDEX -> yandexRepository.thumbnailUrl(item.previewUrl, size) ?: ""
+            LinkProvider.MEGA -> "" // previews would require a full decrypting download
+            LinkProvider.MAILRU -> getThumbnailUrl(item.weblink, size)
         }
     }
 
@@ -232,10 +241,12 @@ class CloudMailRuRepository(
      * Mail.ru (static shard construction), a signed-href API call for Yandex.
      */
     suspend fun resolveDirectUrl(weblink: String): String {
-        return if (providerOf(weblink) == LinkProvider.YANDEX) {
-            yandexRepository.resolveDirectUrl(weblink)
-        } else {
-            getDownloadUrl(weblink)
+        return when (providerOf(weblink)) {
+            LinkProvider.YANDEX -> yandexRepository.resolveDirectUrl(weblink)
+            // MEGA content is client-side encrypted: a plain URL would yield
+            // ciphertext. Downloads go through CloudMegaRepository streams.
+            LinkProvider.MEGA -> ""
+            LinkProvider.MAILRU -> getDownloadUrl(weblink)
         }
     }
 
@@ -243,11 +254,18 @@ class CloudMailRuRepository(
      * Resolves a streaming URL for video/audio playback. The Yandex download
      * href doubles as a range-enabled streaming URL.
      */
+    /**
+     * Downloads a MEGA file into the app cache (viewer previews). No-op for
+     * other providers.
+     */
+    suspend fun downloadMegaToCache(item: CloudItem, cacheDir: java.io.File): Result<java.io.File> =
+        megaRepository.downloadToCache(item.weblink, item.name, cacheDir)
+
     suspend fun resolveMediaUrl(weblink: String): String {
-        return if (providerOf(weblink) == LinkProvider.YANDEX) {
-            yandexRepository.resolveDirectUrl(weblink)
-        } else {
-            getStreamingUrl(weblink)
+        return when (providerOf(weblink)) {
+            LinkProvider.YANDEX -> yandexRepository.resolveDirectUrl(weblink)
+            LinkProvider.MEGA -> "" // MEGA playback is not supported yet
+            LinkProvider.MAILRU -> getStreamingUrl(weblink)
         }
     }
 
@@ -269,10 +287,10 @@ class CloudMailRuRepository(
      * provider by the link/key itself.
      */
     suspend fun fetchFolderContent(rawUrlOrWeblink: String): Result<FolderResult> =
-        if (providerOf(rawUrlOrWeblink) == LinkProvider.YANDEX) {
-            yandexRepository.fetchFolderContent(rawUrlOrWeblink)
-        } else {
-            fetchMailRuFolderContent(rawUrlOrWeblink)
+        when (providerOf(rawUrlOrWeblink)) {
+            LinkProvider.YANDEX -> yandexRepository.fetchFolderContent(rawUrlOrWeblink)
+            LinkProvider.MEGA -> megaRepository.fetchFolderContent(rawUrlOrWeblink)
+            LinkProvider.MAILRU -> fetchMailRuFolderContent(rawUrlOrWeblink)
         }
 
     private suspend fun fetchMailRuFolderContent(rawUrlOrWeblink: String): Result<FolderResult> = withContext(Dispatchers.IO) {

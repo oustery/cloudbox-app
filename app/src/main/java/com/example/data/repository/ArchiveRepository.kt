@@ -3,6 +3,7 @@ package com.example.data.repository
 import android.content.Context
 import android.os.Environment
 import android.util.Log
+import com.example.data.api.LinkProvider
 import com.example.data.api.NetworkModule
 import com.example.data.local.SavedLinkEntity
 import kotlinx.coroutines.CancellationException
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.Request
+import okhttp3.Response
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -255,28 +257,57 @@ class ArchiveRepository private constructor(
 
     /** Downloads one file and copies it into the archive, updating byte progress. */
     private suspend fun writeZipEntry(zip: ZipOutputStream, plan: ArchiveFilePlan) {
-        val url = cloudRepository.resolveDirectUrl(plan.weblink)
-        val request = Request.Builder().url(url).build()
-        NetworkModule.okHttpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IllegalStateException("HTTP ${response.code}")
+        val isMega = CloudMailRuRepository.providerOf(plan.weblink) == LinkProvider.MEGA
+        var megaResponse: Response? = null
+        val input: java.io.InputStream = try {
+            if (isMega) {
+                // MEGA content is client-side encrypted: stream through the
+                // decrypting pipeline (fresh one-time URL + AES-CTR + MAC).
+                val mega = CloudMegaRepository()
+                val target = mega.resolveDownloadTarget(plan.weblink)
+                val request = Request.Builder().url(target.tempUrl).build()
+                val response = NetworkModule.okHttpClient.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    response.close()
+                    throw IllegalStateException("HTTP ${response.code}")
+                }
+                val body = response.body ?: throw IllegalStateException("Пустой ответ")
+                megaResponse = response
+                mega.decryptStream(body.byteStream(), target)
+            } else {
+                val url = cloudRepository.resolveDirectUrl(plan.weblink)
+                val request = Request.Builder().url(url).build()
+                val response = NetworkModule.okHttpClient.newCall(request).execute()
+                if (!response.isSuccessful) {
+                    response.close()
+                    throw IllegalStateException("HTTP ${response.code}")
+                }
+                val body = response.body ?: throw IllegalStateException("Пустой ответ")
+                megaResponse = response
+                body.byteStream()
             }
-            val body = response.body ?: throw IllegalStateException("Пустой ответ")
+        } catch (t: Throwable) {
+            megaResponse?.close()
+            throw t
+        }
 
-            val entryName = sanitizeEntryName("${plan.linkTitle}/${plan.relativePath}")
-            zip.putNextEntry(ZipEntry(entryName))
-            val input = body.byteStream()
-            val buffer = ByteArray(BUFFER_SIZE)
-            var read: Int
-            while (input.read(buffer).also { read = it } != -1) {
-                coroutineContext.ensureActive()
-                zip.write(buffer, 0, read)
-                _progress.update { it?.copy(bytesWritten = it.bytesWritten + read) }
+        input.use { stream ->
+            try {
+                val entryName = sanitizeEntryName("${plan.linkTitle}/${plan.relativePath}")
+                zip.putNextEntry(ZipEntry(entryName))
+                val buffer = ByteArray(BUFFER_SIZE)
+                var read: Int
+                while (stream.read(buffer).also { read = it } != -1) {
+                    coroutineContext.ensureActive()
+                    zip.write(buffer, 0, read)
+                    _progress.update { it?.copy(bytesWritten = it.bytesWritten + read) }
+                }
+                zip.closeEntry()
+            } finally {
+                megaResponse?.close()
             }
-            zip.closeEntry()
         }
     }
-
     private class CollectResult(val anyFound: Boolean, val truncated: Boolean)
 
     /**

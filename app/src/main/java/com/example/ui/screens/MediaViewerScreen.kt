@@ -114,7 +114,15 @@ fun MediaViewerScreen(
             Box(
                 modifier = if (showFilmstrip) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxSize()
             ) {
-                if (item.isVideo) {
+                if (item.isVideo && viewModel.isMegaItem(item.weblink)) {
+                    // MEGA video cannot be streamed client-side (encrypted
+                    // content, no local proxy): show a graceful fallback.
+                    MegaVideoFallback(
+                        item = item,
+                        modifier = Modifier.fillMaxSize(),
+                        onDownload = { downloadViewModel.downloadItem(item) }
+                    )
+                } else if (item.isVideo) {
                     VideoPlayerContent(
                         item = item,
                         viewModel = viewModel,

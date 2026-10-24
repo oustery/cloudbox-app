@@ -23,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.example.ui.components.expressive.WavyCircularProgress
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -59,8 +60,29 @@ internal fun ZoomableImageContent(
     var imageError by remember(item.weblink) { mutableStateOf(false) }
     var retryAttempt by remember(item.weblink) { mutableIntStateOf(0) }
 
-    // High-resolution preview token; the source file itself is rarely needed.
-    val imageUrl = viewModel.getThumbnailUrl(item, ThumbnailSize.HIGH_RES)
+    // MEGA items have no shard previews: the (already decrypted) file is
+    // downloaded into the app cache and shown from local storage.
+    val isMega = viewModel.isMegaItem(item.weblink)
+    var megaModel by remember(item.weblink) { mutableStateOf<Any?>(null) }
+    if (isMega) {
+        LaunchedEffect(item.weblink, retryAttempt) {
+            isLoadingImage = true
+            imageError = false
+            val file = viewModel.resolveMegaPreview(item)
+            if (file != null && file.length() > 0) {
+                megaModel = file
+            } else {
+                megaModel = null
+                imageError = true
+            }
+            isLoadingImage = false
+        }
+    }
+
+    // High-resolution preview token for shard-based providers; a local
+    // decrypted file for MEGA.
+    val imageUrl: Any? = if (isMega) megaModel
+    else viewModel.getThumbnailUrl(item, ThumbnailSize.HIGH_RES)
 
     Box(
         modifier = Modifier
@@ -96,7 +118,7 @@ internal fun ZoomableImageContent(
             },
         contentAlignment = Alignment.Center
     ) {
-        if (!imageError) {
+        if (!imageError && imageUrl != null) {
             key(retryAttempt) {
                 AsyncImage(
                     model = imageUrl,
@@ -145,7 +167,7 @@ internal fun ZoomableImageContent(
                         retryAttempt++
                     }
                 ) {
-                    Text("Повторить")
+                    Text(if (isMega) "Повторить загрузку" else "Повторить")
                 }
             }
         }

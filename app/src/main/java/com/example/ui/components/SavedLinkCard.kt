@@ -444,10 +444,12 @@ private fun formatCardDate(timestamp: Long): String {
 private fun ProviderBadge(provider: LinkProvider, modifier: Modifier = Modifier) {
     val containerColor = when (provider) {
         LinkProvider.YANDEX -> MaterialTheme.colorScheme.tertiaryContainer
+        LinkProvider.MEGA -> MaterialTheme.colorScheme.secondaryContainer
         LinkProvider.MAILRU -> MaterialTheme.colorScheme.primaryContainer
     }
     val contentColor = when (provider) {
         LinkProvider.YANDEX -> MaterialTheme.colorScheme.onTertiaryContainer
+        LinkProvider.MEGA -> MaterialTheme.colorScheme.onSecondaryContainer
         LinkProvider.MAILRU -> MaterialTheme.colorScheme.onPrimaryContainer
     }
     Surface(
