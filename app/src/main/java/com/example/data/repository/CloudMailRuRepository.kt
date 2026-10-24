@@ -3,7 +3,9 @@ package com.example.data.repository
 import android.util.Log
 import com.example.data.api.CloudMailRuApi
 import com.example.data.api.CloudUrlParser
+import com.example.data.api.LinkProvider
 import com.example.data.api.NetworkModule
+import com.example.data.api.YandexUrlParser
 import com.example.data.local.SavedLinkDao
 import com.example.data.local.SavedLinkEntity
 import com.example.data.model.CloudItem
@@ -47,11 +49,20 @@ class CloudMailRuRepository(
         private const val DEFAULT_DOWNLOAD_SHARD = "https://cloclo60.cloud.mail.ru/weblink/view/"
         private const val DEFAULT_THUMB_SHARD = "https://thumb.cloud.mail.ru/weblink/thumb/"
         private const val DEFAULT_VIEW_SHARD = "https://cloclo60.cloud.mail.ru/weblink/view/"
+
+        /**
+         * Provider router: picks the content source for a link/key.
+         * Yandex public resources are served by [YandexDiskRepository].
+         */
+        fun providerOf(rawUrlOrWeblink: String): LinkProvider =
+            LinkProvider.detectOrDefault(rawUrlOrWeblink)
     }
 
     private var cachedDownloadShard: String? = null
     private var cachedThumbShard: String? = null
     private var cachedViewShard: String? = null
+
+    private val yandexRepository = YandexDiskRepository()
 
     val allSavedLinks: Flow<List<SavedLinkEntity>> = savedLinkDao.getAllSavedLinks()
 
@@ -76,7 +87,10 @@ class CloudMailRuRepository(
         previewThumbnailUrl: String? = null,
         updateTitle: Boolean = true
     ): Long = withContext(Dispatchers.IO) {
-        val weblinkKey = CloudUrlParser.extractWeblink(url) ?: url
+        val weblinkKey = when (providerOf(url)) {
+            LinkProvider.YANDEX -> YandexUrlParser.normalize(url) ?: url
+            LinkProvider.MAILRU -> CloudUrlParser.extractWeblink(url) ?: url
+        }
         val existing = savedLinkDao.getByWeblink(weblinkKey)
         if (existing != null) {
             val updated = existing.copy(
@@ -201,6 +215,43 @@ class CloudMailRuRepository(
     }
 
     /**
+     * Constructs a thumbnail URL for a cloud item, whichever provider it
+     * belongs to. Yandex items embed a ready preview URL in the API response;
+     * Mail.ru items are built from the public thumb shard.
+     */
+    fun getThumbnailUrl(item: CloudItem, size: ThumbnailSize = ThumbnailSize.HIGH_RES): String {
+        return if (providerOf(item.weblink) == LinkProvider.YANDEX) {
+            yandexRepository.thumbnailUrl(item.previewUrl, size) ?: ""
+        } else {
+            getThumbnailUrl(item.weblink, size)
+        }
+    }
+
+    /**
+     * Resolves a direct, downloadable URL for any provider. Synchronous for
+     * Mail.ru (static shard construction), a signed-href API call for Yandex.
+     */
+    suspend fun resolveDirectUrl(weblink: String): String {
+        return if (providerOf(weblink) == LinkProvider.YANDEX) {
+            yandexRepository.resolveDirectUrl(weblink)
+        } else {
+            getDownloadUrl(weblink)
+        }
+    }
+
+    /**
+     * Resolves a streaming URL for video/audio playback. The Yandex download
+     * href doubles as a range-enabled streaming URL.
+     */
+    suspend fun resolveMediaUrl(weblink: String): String {
+        return if (providerOf(weblink) == LinkProvider.YANDEX) {
+            yandexRepository.resolveDirectUrl(weblink)
+        } else {
+            getStreamingUrl(weblink)
+        }
+    }
+
+    /**
      * Percent-encodes every path segment of a weblink so the resulting URL is
      * safe for OkHttp / Coil. URLEncoder targets form encoding ('+' for space),
      * therefore '+' is converted back to '%20' for path semantics.
@@ -214,9 +265,17 @@ class CloudMailRuRepository(
     }
 
     /**
-     * Fetches the contents of a public folder or file.
+     * Fetches the contents of a public folder or file, routing to the right
+     * provider by the link/key itself.
      */
-    suspend fun fetchFolderContent(rawUrlOrWeblink: String): Result<FolderResult> = withContext(Dispatchers.IO) {
+    suspend fun fetchFolderContent(rawUrlOrWeblink: String): Result<FolderResult> =
+        if (providerOf(rawUrlOrWeblink) == LinkProvider.YANDEX) {
+            yandexRepository.fetchFolderContent(rawUrlOrWeblink)
+        } else {
+            fetchMailRuFolderContent(rawUrlOrWeblink)
+        }
+
+    private suspend fun fetchMailRuFolderContent(rawUrlOrWeblink: String): Result<FolderResult> = withContext(Dispatchers.IO) {
         val weblinkKey = CloudUrlParser.extractWeblink(rawUrlOrWeblink)
             ?: return@withContext Result.failure(IllegalArgumentException("Неверный формат ссылки Облака Mail.ru"))
 

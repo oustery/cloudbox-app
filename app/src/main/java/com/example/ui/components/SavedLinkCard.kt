@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
+import com.example.data.api.LinkProvider
 import com.example.data.local.SavedLinkEntity
 import com.example.ui.core.feedback.UiMessenger
 import com.example.ui.theme.UiRadius
@@ -222,6 +224,8 @@ fun SavedLinkCard(
                     )
                     Spacer(modifier = Modifier.height(UiSpacing.micro))
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProviderBadge(provider = LinkProvider.detectOrDefault(link.weblinkKey))
+                        Spacer(modifier = Modifier.width(UiSpacing.small))
                         if (link.category.isNotBlank() && link.category != "Все") {
                             CategoryTag(label = link.category)
                             Spacer(modifier = Modifier.width(UiSpacing.small))
@@ -376,5 +380,34 @@ private fun formatCardDate(timestamp: Long): String {
         cardDateFormat.format(Date(timestamp))
     } catch (e: Exception) {
         ""
+    }
+}
+
+/**
+ * Compact provider chip ("М" / "Я") so the user always sees which cloud a
+ * saved link belongs to. Theme tokens keep it consistent in both color schemes.
+ */
+@Composable
+private fun ProviderBadge(provider: LinkProvider, modifier: Modifier = Modifier) {
+    val containerColor = when (provider) {
+        LinkProvider.YANDEX -> MaterialTheme.colorScheme.tertiaryContainer
+        LinkProvider.MAILRU -> MaterialTheme.colorScheme.primaryContainer
+    }
+    val contentColor = when (provider) {
+        LinkProvider.YANDEX -> MaterialTheme.colorScheme.onTertiaryContainer
+        LinkProvider.MAILRU -> MaterialTheme.colorScheme.onPrimaryContainer
+    }
+    Surface(
+        color = containerColor,
+        contentColor = contentColor,
+        shape = RoundedCornerShape(6.dp),
+        modifier = modifier
+    ) {
+        Text(
+            text = provider.shortLabel,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+        )
     }
 }

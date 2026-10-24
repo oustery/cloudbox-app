@@ -53,6 +53,36 @@ object CloudUrlParser {
     }
 
     /**
+     * Converts an internal weblink key back to the full web address,
+     * taking the provider into account:
+     *  - Mail.ru key "KVy7/S1hRRPVUE" -> "https://cloud.mail.ru/public/KVy7/S1hRRPVUE"
+     *  - Yandex key is already a normalized URL and is returned as-is.
+     */
+    fun toFullUrl(provider: LinkProvider, weblink: String): String = when (provider) {
+        LinkProvider.YANDEX -> weblink
+        LinkProvider.MAILRU -> toFullPublicUrl(weblink)
+    }
+
+    /**
+     * Provider-aware intake parser: accepts a Mail.ru public link, a Yandex
+     * public link, or a bare Mail.ru weblink key, and returns the canonical
+     * internal key ready for [com.example.data.repository.CloudMailRuRepository.fetchFolderContent].
+     * Returns null when the input matches neither provider.
+     */
+    fun extractCloudKey(input: String): String? {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return null
+        return when (LinkProvider.detect(trimmed)) {
+            LinkProvider.YANDEX -> YandexUrlParser.normalize(trimmed)
+            LinkProvider.MAILRU -> extractWeblink(trimmed)
+            null -> {
+                // Bare Mail.ru key ("KVy7/S1hRRPVUE") carries no host hints.
+                if (extractWeblink(trimmed) != null) trimmed else null
+            }
+        }
+    }
+
+    /**
      * Extracts the root public folder key (first two segments: "key1/key2")
      */
     fun getRootWeblink(weblink: String): String {

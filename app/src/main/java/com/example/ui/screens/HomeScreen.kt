@@ -119,14 +119,14 @@ fun HomeScreen(
             inputError = "Введите или вставьте ссылку"
             return
         }
-        val weblink = CloudUrlParser.extractWeblink(candidate)
-        if (weblink == null) {
-            inputError = "Неверный формат ссылки Облака Mail.ru"
+        val cloudKey = CloudUrlParser.extractCloudKey(candidate)
+        if (cloudKey == null) {
+            inputError = "Поддерживаются ссылки Облака Mail.ru и Яндекс.Диска"
             return
         }
         inputError = null
         keyboardController?.hide()
-        onOpenFolder(weblink)
+        onOpenFolder(cloudKey)
     }
 
     fun pasteLinkFromClipboard() {

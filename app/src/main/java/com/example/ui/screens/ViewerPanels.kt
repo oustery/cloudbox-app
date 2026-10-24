@@ -181,7 +181,7 @@ internal fun MediaFilmstripPanel(
                     ) {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data(viewModel.getThumbnailUrl(mediaItem.weblink, ThumbnailSize.SMALL))
+                                .data(viewModel.getThumbnailUrl(mediaItem, ThumbnailSize.SMALL))
                                 .crossfade(160)
                                 .build(),
                             contentDescription = "Предпросмотр: ${mediaItem.name}",

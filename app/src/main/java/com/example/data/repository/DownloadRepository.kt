@@ -3,6 +3,7 @@ package com.example.data.repository
 import android.content.Context
 import android.os.Environment
 import android.util.Log
+import com.example.data.api.LinkProvider
 import com.example.data.api.NetworkModule
 import com.example.data.local.AppDatabase
 import com.example.data.local.DownloadDao
@@ -97,21 +98,44 @@ class DownloadRepository private constructor(
 
     fun enqueueDownload(item: CloudItem, customName: String? = null) {
         val fileName = sanitizeFileName(customName ?: item.name)
-        val downloadUrl = cloudRepository.getDownloadUrl(item.weblink)
         val taskId = UUID.randomUUID().toString()
 
-        val task = DownloadTaskEntity(
-            id = taskId,
-            weblink = item.weblink,
-            downloadUrl = downloadUrl,
-            fileName = fileName,
-            fileSize = item.size,
-            downloadedBytes = 0L,
-            status = DownloadStatus.QUEUED.name,
-            mimeType = item.type ?: ""
-        )
-
         repositoryScope.launch {
+            // Yandex hrefs are signed and must be resolved via the public API;
+            // Mail.ru URLs are built synchronously from the shard.
+            val downloadUrl = try {
+                cloudRepository.resolveDirectUrl(item.weblink)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to resolve download URL for ${item.weblink}: ${t.message}", t)
+                downloadDao.insertTask(
+                    DownloadTaskEntity(
+                        id = taskId,
+                        weblink = item.weblink,
+                        downloadUrl = "",
+                        fileName = fileName,
+                        fileSize = item.size,
+                        downloadedBytes = 0L,
+                        status = DownloadStatus.FAILED.name,
+                        mimeType = item.type ?: "",
+                        errorMessage = t.localizedMessage ?: "Не удалось получить адрес загрузки"
+                    )
+                )
+                return@launch
+            }
+
+            val task = DownloadTaskEntity(
+                id = taskId,
+                weblink = item.weblink,
+                downloadUrl = downloadUrl,
+                fileName = fileName,
+                fileSize = item.size,
+                downloadedBytes = 0L,
+                status = DownloadStatus.QUEUED.name,
+                mimeType = item.type ?: ""
+            )
+
             downloadDao.insertTask(task)
             startTask(taskId, downloadUrl, fileName, item.size)
             DownloadService.start(appContext)
@@ -147,7 +171,13 @@ class DownloadRepository private constructor(
         repositoryScope.launch {
             val task = downloadDao.getTaskById(id) ?: return@launch
             if (task.status == DownloadStatus.DOWNLOADING.name || task.status == DownloadStatus.QUEUED.name) return@launch
-            startTask(id, task.downloadUrl, task.fileName, task.fileSize, task.downloadedBytes)
+            // Signed Yandex hrefs expire; re-resolve them before resuming.
+            val url = if (CloudMailRuRepository.providerOf(task.weblink) == LinkProvider.YANDEX) {
+                runCatching { cloudRepository.resolveDirectUrl(task.weblink) }.getOrNull() ?: task.downloadUrl
+            } else {
+                task.downloadUrl
+            }
+            startTask(id, url, task.fileName, task.fileSize, task.downloadedBytes)
             DownloadService.start(appContext)
         }
     }
