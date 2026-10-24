@@ -40,6 +40,26 @@ object PlayerMediaCache {
             StandaloneDatabaseProvider(context)
         ).also { instance = it }
     }
+
+    /** Bytes currently occupied by the streamed-media cache (0 if never used). */
+    fun sizeBytes(): Long = instance?.cacheSpace ?: 0L
+
+    /**
+     * Drops every cached stream. Safe to call when no playback is running;
+     * errors are swallowed so the settings screen never crashes on a locked
+     * cache file. Returns true when the wipe reported success.
+     */
+    fun clear(): Boolean {
+        val cache = instance ?: return true
+        return try {
+            cache.keys.toList().forEach { key ->
+                runCatching { cache.removeResource(key) }
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
 
 internal fun Context.findActivity(): Activity? = when (this) {

@@ -89,6 +89,7 @@ private val homeCategories = listOf("Все", "Избранное", "Фото и
 @Composable
 fun HomeScreen(
     viewModel: CloudLinkViewModel,
+    autoUpdateCheck: Boolean = true,
     onOpenFolder: (String) -> Unit,
     onOpenPool: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -107,10 +108,13 @@ fun HomeScreen(
     var renamingLink by remember { mutableStateOf<SavedLinkEntity?>(null) }
     var categorizingLink by remember { mutableStateOf<SavedLinkEntity?>(null) }
 
-    // In-app update check (rolling GitHub release); runs once per process.
+    // In-app update check (rolling GitHub release); runs once per process and
+    // only when the user has not turned auto-checks off in settings.
     val updateState by AppUpdateManager.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) {
-        AppUpdateManager.checkForUpdate(context)
+    LaunchedEffect(autoUpdateCheck) {
+        if (autoUpdateCheck) {
+            AppUpdateManager.checkForUpdate(context)
+        }
     }
 
     fun submitLink() {
