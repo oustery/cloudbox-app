@@ -90,6 +90,7 @@ import com.example.data.preferences.AppSettings
 import com.example.data.preferences.AppSettingsViewModel
 import com.example.data.preferences.AppThemeMode
 import com.example.data.preferences.UiPrefs
+import com.example.data.repository.ArchiveRepository
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.DownloadRepository
 import com.example.data.update.AppUpdateManager
@@ -153,7 +154,11 @@ class MainActivity : ComponentActivity() {
     private val cloudViewModel: CloudLinkViewModel by viewModels {
         val db = AppDatabase.getDatabase(applicationContext)
         val repo = CloudMailRuRepository(savedLinkDao = db.savedLinkDao())
-        CloudLinkViewModelFactory(repo, UiPrefs(applicationContext))
+        CloudLinkViewModelFactory(
+            repository = repo,
+            uiPrefs = UiPrefs(applicationContext),
+            archiveRepository = ArchiveRepository.getInstance(applicationContext)
+        )
     }
 
     private val downloadViewModel: DownloadViewModel by viewModels {

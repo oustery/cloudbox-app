@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Circle
+import com.composables.icons.lucide.CircleCheckBig
 import com.composables.icons.lucide.Copy
 import com.composables.icons.lucide.EllipsisVertical
 import com.composables.icons.lucide.ExternalLink
@@ -73,6 +76,10 @@ import com.example.ui.icons.StarFilled
  *  - swipe right -> favorite toggle (springs back, does not dismiss)
  *  - swipe left  -> delete (goes through the undo snackbar path)
  * Plus the overflow menu: open / rename / category / copy link / delete.
+ *
+ * Selection mode (batch operations): long-press enters it; while active the
+ * card toggles the checkbox on tap, hides the swipe gestures and the menu,
+ * and draws a highlighted border when selected.
  */
 @Composable
 fun SavedLinkCard(
@@ -82,7 +89,10 @@ fun SavedLinkCard(
     onDeleteClick: () -> Unit,
     onRenameClick: () -> Unit,
     onCategoryClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onLongPress: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
@@ -109,6 +119,8 @@ fun SavedLinkCard(
     SwipeToDismissBox(
         state = dismissState,
         modifier = modifier.testTag("saved_link_swipe_${link.weblinkKey}"),
+        // In selection mode the horizontal swipe must not fight the tap-to-toggle.
+        gesturesEnabled = !isSelectionMode,
         backgroundContent = {
             val isDeleteSide = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
             val backgroundColor =
@@ -145,14 +157,27 @@ fun SavedLinkCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(UiRadius.large))
-                .clickable(onClick = onClick)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongPress
+                )
                 .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    },
                     shape = RoundedCornerShape(UiRadius.large)
                 )
                 .testTag("saved_link_${link.weblinkKey}"),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isSelected) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
@@ -240,28 +265,55 @@ fun SavedLinkCard(
                     }
                 }
 
-                IconButton(
-                    onClick = onFavoriteToggle,
-                    modifier = Modifier.size(40.dp).testTag("saved_link_favorite")
-                ) {
-                    Icon(
-                        imageVector = if (link.isFavorite) StarFilled else Lucide.Star,
-                        contentDescription = "Избранное",
-                        tint = if (link.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Box {
+                if (isSelectionMode) {
+                    // Checkbox instead of the favorite star while selecting.
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .testTag("saved_link_select_${link.weblinkKey}"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Lucide.CircleCheckBig,
+                                contentDescription = "Выбрано",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Lucide.Circle,
+                                contentDescription = "Не выбрано",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    }
+                } else {
                     IconButton(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier.size(40.dp).testTag("saved_link_menu")
+                        onClick = onFavoriteToggle,
+                        modifier = Modifier.size(40.dp).testTag("saved_link_favorite")
                     ) {
                         Icon(
-                            imageVector = Lucide.EllipsisVertical,
-                            contentDescription = "Ещё действия",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            imageVector = if (link.isFavorite) StarFilled else Lucide.Star,
+                            contentDescription = "Избранное",
+                            tint = if (link.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+
+                if (!isSelectionMode) {
+                    Box {
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier.size(40.dp).testTag("saved_link_menu")
+                        ) {
+                            Icon(
+                                imageVector = Lucide.EllipsisVertical,
+                                contentDescription = "Ещё действия",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false }
@@ -323,6 +375,7 @@ fun SavedLinkCard(
                             },
                             modifier = Modifier.testTag("saved_link_menu_delete")
                         )
+                        }
                     }
                 }
             }
