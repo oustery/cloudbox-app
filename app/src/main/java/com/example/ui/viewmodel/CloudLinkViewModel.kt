@@ -8,6 +8,8 @@ import com.example.data.api.LinkProvider
 import com.example.data.local.SavedLinkEntity
 import com.example.data.model.CloudItem
 import com.example.data.model.CloudItemSortOrder
+import com.example.data.repository.ArchiveProgress
+import com.example.data.repository.ArchiveRepository
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.FolderResult
 import com.example.data.repository.ThumbnailSize
@@ -48,7 +50,8 @@ data class AggregatedEntry(
 
 class CloudLinkViewModel(
     private val repository: CloudMailRuRepository,
-    private val uiPrefs: UiPrefs? = null
+    private val uiPrefs: UiPrefs? = null,
+    private val archiveRepository: ArchiveRepository? = null
 ) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow("Все")
@@ -603,16 +606,43 @@ class CloudLinkViewModel(
     }
 
     fun getVideoResumePosition(weblink: String): Long = videoResumePositions[weblink] ?: 0L
+
+    // ---- ZIP-archive (batch download) -------------------------------------
+    // The job lives in the process-wide ArchiveRepository, so its progress
+    // survives navigation between screens (home <-> downloads).
+
+    /** Current archive job; null when idle, [ArchiveProgress.isActive] while running. */
+    val archiveProgress: StateFlow<ArchiveProgress?> =
+        archiveRepository?.progress ?: MutableStateFlow(null)
+
+    /** Packs the given links' contents into one ZIP in Downloads/CloudBox. */
+    fun archiveLinks(links: List<SavedLinkEntity>) {
+        if (archiveRepository == null) {
+            UiMessenger.show("Архивация недоступна")
+            return
+        }
+        archiveRepository.archiveLinks(links)
+    }
+
+    fun cancelArchive() {
+        archiveRepository?.cancel()
+    }
+
+    /** Clears a finished (DONE/FAILED/CANCELLED) archive job from the state. */
+    fun dismissArchiveResult() {
+        archiveRepository?.dismissResult()
+    }
 }
 
 class CloudLinkViewModelFactory(
     private val repository: CloudMailRuRepository,
-    private val uiPrefs: UiPrefs? = null
+    private val uiPrefs: UiPrefs? = null,
+    private val archiveRepository: ArchiveRepository? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CloudLinkViewModel::class.java)) {
-            return CloudLinkViewModel(repository, uiPrefs) as T
+            return CloudLinkViewModel(repository, uiPrefs, archiveRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

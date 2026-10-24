@@ -44,4 +44,13 @@ class HomeUiStateTest {
         assertTrue(showScrollToTop(3))
         assertTrue(showScrollToTop(10))
     }
+
+    @Test
+    fun `links pluralization covers russian cases`() {
+        assertTrue(linksPlural(1).contains("ссылка"))
+        assertTrue(linksPlural(2).contains("ссылки"))
+        assertTrue(linksPlural(5).contains("ссылок"))
+        assertTrue(linksPlural(11).contains("ссылок"))
+        assertTrue(linksPlural(21).contains("ссылка"))
+    }
 }
