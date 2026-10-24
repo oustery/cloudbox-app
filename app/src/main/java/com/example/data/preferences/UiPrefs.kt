@@ -15,6 +15,18 @@ private val explorerSortOrderKey = stringPreferencesKey("explorer_sort_order")
 private val explorerFilterKey = stringPreferencesKey("explorer_filter")
 private val explorerGridViewKey = booleanPreferencesKey("explorer_grid_view")
 private val explorerGridDensityKey = stringPreferencesKey("explorer_grid_density")
+private val homeSortOrderKey = stringPreferencesKey("home_sort_order")
+
+/**
+ * Sort order of the saved-links library on the home screen. Persisted like the
+ * explorer's view state: the library should come back the way it was left.
+ */
+enum class LibrarySortOrder(val title: String) {
+    NEWEST("Сначала новые"),
+    OLDEST("Сначала старые"),
+    NAME("По имени"),
+    MOST_FILES("Больше файлов");
+}
 
 /**
  * Density of the explorer grid: the minimum tile size fed to
@@ -56,6 +68,12 @@ class UiPrefs(context: Context) {
         } ?: GridDensity.STANDARD
     }
 
+    val homeSortOrder: Flow<LibrarySortOrder> = dataStore.data.map { preferences ->
+        preferences[homeSortOrderKey]?.let { name ->
+            LibrarySortOrder.entries.firstOrNull { it.name == name }
+        } ?: LibrarySortOrder.NEWEST
+    }
+
     suspend fun setExplorerSortOrder(order: CloudItemSortOrder) {
         dataStore.edit { it[explorerSortOrderKey] = order.name }
     }
@@ -70,5 +88,9 @@ class UiPrefs(context: Context) {
 
     suspend fun setExplorerGridDensity(density: GridDensity) {
         dataStore.edit { it[explorerGridDensityKey] = density.name }
+    }
+
+    suspend fun setHomeSortOrder(order: LibrarySortOrder) {
+        dataStore.edit { it[homeSortOrderKey] = order.name }
     }
 }

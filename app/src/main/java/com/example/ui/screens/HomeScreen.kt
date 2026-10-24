@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -50,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -60,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.api.CloudUrlParser
 import com.example.data.local.SavedLinkEntity
+import com.example.data.preferences.LibrarySortOrder
 import com.example.data.update.AppUpdateManager
 import com.example.data.update.UpdateUiState
 import com.example.ui.components.SavedLinkCard
@@ -72,9 +76,13 @@ import com.example.ui.viewmodel.CloudLinkViewModel
 import com.example.ui.theme.UiRadius
 import com.example.ui.theme.UiSpacing
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ArrowUpDown
+import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.ChevronRight
+import com.composables.icons.lucide.Files
 import com.composables.icons.lucide.Layers
 import com.composables.icons.lucide.Link
+import com.composables.icons.lucide.Link2
 import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.X
 import com.example.ui.icons.StarFilled
@@ -98,6 +106,8 @@ fun HomeScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val haptics = rememberHaptics()
     val savedLinks by viewModel.savedLinks.collectAsStateWithLifecycle()
+    val allLinks by viewModel.allLinks.collectAsStateWithLifecycle()
+    val homeSortOrder by viewModel.homeSortOrder.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val inputUrl by viewModel.linkInput.collectAsStateWithLifecycle()
@@ -105,8 +115,20 @@ fun HomeScreen(
     val isRefreshingLinks by viewModel.isRefreshingLinks.collectAsStateWithLifecycle()
 
     var inputError by remember { mutableStateOf<String?>(null) }
+    var isSortMenuExpanded by remember { mutableStateOf(false) }
     var renamingLink by remember { mutableStateOf<SavedLinkEntity?>(null) }
     var categorizingLink by remember { mutableStateOf<SavedLinkEntity?>(null) }
+
+    // Live counters per filter chip, derived from the unfiltered library.
+    val categoryCounts = remember(allLinks) {
+        homeCategories.associateWith { category ->
+            when (category) {
+                "Все" -> allLinks.size
+                "Избранное" -> allLinks.count { it.isFavorite }
+                else -> allLinks.count { it.category.equals(category, ignoreCase = true) }
+            }
+        }
+    }
 
     // In-app update check (rolling GitHub release); runs once per process and
     // only when the user has not turned auto-checks off in settings.
@@ -186,62 +208,116 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(UiSpacing.large))
         }
 
+        // Library at a glance: links, files, favorites.
+        LibraryStatsRow(
+            linkCount = allLinks.size,
+            fileCount = allLinks.sumOf { it.itemCount },
+            favoriteCount = allLinks.count { it.isFavorite },
+            onFavoritesClick = {
+                haptics.tick()
+                viewModel.setCategory("Избранное")
+            }
+        )
+        Spacer(modifier = Modifier.height(UiSpacing.medium))
+
         // Unified pool entry: one tap from home to every file of every link.
         PoolEntryCard(
-            linkCount = savedLinks.size,
+            linkCount = allLinks.size,
+            fileCount = allLinks.sumOf { it.itemCount },
             onClick = onOpenPool
         )
         Spacer(modifier = Modifier.height(UiSpacing.medium))
 
-        // Search in saved links if list has items
-        if (savedLinks.isNotEmpty() || searchQuery.isNotBlank()) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = {
-                    Text(
-                        "Поиск сохранённых ссылок",
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
+        // Search + library sort — only when there is something to look through.
+        if (allLinks.isNotEmpty() || searchQuery.isNotBlank()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(UiSpacing.extraSmall)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setSearchQuery(it) },
+                    placeholder = {
+                        Text(
+                            "Поиск сохранённых ссылок",
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Lucide.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                Icon(Lucide.X, contentDescription = "Очистить поиск")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("search_saved_links"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Lucide.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                            Icon(Lucide.X, contentDescription = "Очистить поиск")
+                )
+                Box {
+                    IconButton(
+                        onClick = { isSortMenuExpanded = true },
+                        modifier = Modifier.testTag("home_sort_button")
+                    ) {
+                        Icon(
+                            imageVector = Lucide.ArrowUpDown,
+                            contentDescription = "Сортировка библиотеки",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = isSortMenuExpanded,
+                        onDismissRequest = { isSortMenuExpanded = false }
+                    ) {
+                        LibrarySortOrder.entries.forEach { order ->
+                            DropdownMenuItem(
+                                text = { Text(order.title) },
+                                onClick = {
+                                    haptics.tick()
+                                    viewModel.setHomeSortOrder(order)
+                                    isSortMenuExpanded = false
+                                },
+                                trailingIcon = if (homeSortOrder == order) {
+                                    {
+                                        Icon(
+                                            imageVector = Lucide.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                } else null
+                            )
                         }
                     }
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("search_saved_links"),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                )
-            )
+                }
+            }
             Spacer(modifier = Modifier.height(UiSpacing.medium))
-        }
 
-        // Category Filter Chips
-        AdaptiveChipGroup(items = categories, modifier = Modifier.fillMaxWidth()) { category ->
+            // Category Filter Chips with live counts
+            AdaptiveChipGroup(items = categories, modifier = Modifier.fillMaxWidth()) { category ->
                 val isSelected = selectedCategory == category
+                val count = categoryCounts[category] ?: 0
                 FilterChip(
                     selected = isSelected,
                     onClick = { viewModel.setCategory(category) },
-                    label = { Text(category) },
+                    label = { Text(if (count > 0) "$category · $count" else category) },
                     leadingIcon = if (category == "Избранное" && isSelected) {
                         {
                             Icon(
@@ -259,9 +335,10 @@ fun HomeScreen(
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.testTag("category_chip_$category")
                 )
-        }
+            }
 
-        Spacer(modifier = Modifier.height(UiSpacing.small))
+            Spacer(modifier = Modifier.height(UiSpacing.small))
+        }
 
         // Saved Links List — pull down to refresh counts and covers
         PullToRefreshBox(
@@ -338,11 +415,12 @@ fun HomeScreen(
 
 /**
  * One-tap entry into the unified content pool ("Все файлы"): shows how many
- * links will be merged so the scope is clear before opening.
+ * links and files will be merged so the scope is clear before opening.
  */
 @Composable
 private fun PoolEntryCard(
     linkCount: Int,
+    fileCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -386,8 +464,10 @@ private fun PoolEntryCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    text = if (linkCount > 0) "Контент со всех ссылок: $linkCount"
-                    else "Объединённый просмотр всех ссылок",
+                    text = when {
+                        linkCount <= 0 -> "Объединённый просмотр всех ссылок"
+                        else -> "Ссылок: $linkCount · Файлов: ${formatCountCompact(fileCount)}"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                     maxLines = 1,
@@ -402,6 +482,102 @@ private fun PoolEntryCard(
         }
     }
 }
+
+/**
+ * Summary tiles above the library: total links, total files across all of
+ * them and the favorites shortcut (taps into the "Избранное" filter).
+ */
+@Composable
+private fun LibraryStatsRow(
+    linkCount: Int,
+    fileCount: Int,
+    favoriteCount: Int,
+    onFavoritesClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(UiSpacing.small)
+    ) {
+        StatTile(
+            modifier = Modifier.weight(1f),
+            icon = Lucide.Link2,
+            value = linkCount.toString(),
+            label = "Ссылки"
+        )
+        StatTile(
+            modifier = Modifier.weight(1f),
+            icon = Lucide.Files,
+            value = formatCountCompact(fileCount),
+            label = "Файлов"
+        )
+        StatTile(
+            modifier = Modifier.weight(1f),
+            icon = StarFilled,
+            value = favoriteCount.toString(),
+            label = "Избранное",
+            onClick = onFavoritesClick,
+            accent = favoriteCount > 0
+        )
+    }
+}
+
+@Composable
+private fun StatTile(
+    icon: ImageVector,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    accent: Boolean = false
+) {
+    val tileColor = if (accent) {
+        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    }
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(UiRadius.large))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .testTag("stat_tile_$label"),
+        shape = RoundedCornerShape(UiRadius.large),
+        color = tileColor
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = UiSpacing.medium, vertical = UiSpacing.small)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = if (accent) MaterialTheme.colorScheme.onTertiaryContainer
+                else MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(UiSpacing.extraSmall))
+            Text(
+                value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/** Keeps large numbers compact inside the small tiles. */
+private fun formatCountCompact(n: Int): String =
+    if (n >= 10_000) "%.1f тыс.".format(n / 1000f) else n.toString()
 
 @Composable
 private fun RenameLinkDialog(

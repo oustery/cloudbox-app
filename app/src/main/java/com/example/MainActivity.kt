@@ -17,6 +17,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
@@ -90,8 +93,10 @@ import com.example.data.preferences.UiPrefs
 import com.example.data.repository.CloudMailRuRepository
 import com.example.data.repository.DownloadRepository
 import com.example.data.update.AppUpdateManager
+import com.example.ui.core.feedback.Haptics
 import com.example.ui.core.feedback.HapticsGate
 import com.example.ui.core.feedback.UiMessenger
+import com.example.ui.core.feedback.rememberHaptics
 import com.example.ui.screens.DownloadsScreen
 import com.example.ui.screens.FolderExplorerScreen
 import com.example.ui.screens.HomeScreen
@@ -110,11 +115,16 @@ import com.example.ui.viewmodel.CloudLinkViewModelFactory
 import com.example.ui.viewmodel.DownloadViewModel
 import com.example.ui.viewmodel.DownloadViewModelFactory
 import com.example.ui.theme.UiSpacing
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.scale
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.CloudDownload
+import com.composables.icons.lucide.Download
 import com.composables.icons.lucide.Folder
+import com.composables.icons.lucide.FolderOpen
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.Settings
+import com.composables.icons.lucide.Settings2
 
 class MainActivity : ComponentActivity() {
 
@@ -246,6 +256,7 @@ fun MainAppScreen(
     // explicit navigation writes an override (survives rotation via Saveable).
     val currentScreen = currentScreenOverride ?: settings.startScreen.key
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptics = rememberHaptics()
 
     // Settings-driven global switches applied once per settings change.
     SideEffect {
@@ -303,7 +314,8 @@ fun MainAppScreen(
         modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            if (activeMediaItem == null && currentScreen != "explorer") {
+            // Brand header only on home; the other tabs have their own headers.
+            if (activeMediaItem == null && currentScreen == "home") {
                 TopAppBar(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -331,40 +343,10 @@ fun MainAppScreen(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Облако Mail.ru",
+                                    text = "Mail.ru · Яндекс Диск",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    },
-                    actions = {
-                        // Quick Downloads shortcut icon in header
-                        IconButton(
-                            onClick = { currentScreenOverride = "downloads" },
-                            modifier = Modifier.testTag("topbar_downloads_button")
-                        ) {
-                            BadgedBox(
-                                badge = {
-                                    if (activeDownloadsCount > 0) {
-                                        Badge(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary
-                                        ) {
-                                            Text(
-                                                text = activeDownloadsCount.toString(),
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Lucide.CloudDownload,
-                                    contentDescription = "Загрузки",
-                                    tint = if (currentScreen == "downloads") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -384,137 +366,60 @@ fun MainAppScreen(
                     modifier = Modifier
                         .testTag("main_bottom_nav")
                 ) {
-                    NavigationBarItem(
-                        selected = currentScreen == "home",
-                        onClick = { currentScreenOverride = "home" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentScreen == "home") Lucide.House else Lucide.House,
-                                contentDescription = "Главная"
-                            )
-                        },
-                        label = if (compactBottomNavigation) null else {
-                            {
-                                Text(
-                                    "Главная",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        },
-                        alwaysShowLabel = !compactBottomNavigation,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.testTag("nav_item_home")
-                    )
-
-                    NavigationBarItem(
-                        selected = currentScreen == "explorer",
-                        onClick = { currentScreenOverride = "explorer" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentScreen == "explorer") Lucide.Folder else Lucide.Folder,
-                                contentDescription = "Проводник"
-                            )
-                        },
-                        label = if (compactBottomNavigation) null else {
-                            {
-                                Text(
-                                    "Проводник",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        },
-                        alwaysShowLabel = !compactBottomNavigation,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.testTag("nav_item_explorer")
-                    )
-
-                    NavigationBarItem(
-                        selected = currentScreen == "downloads",
-                        onClick = { currentScreenOverride = "downloads" },
-                        icon = {
-                            BadgedBox(
-                                badge = {
-                                    if (activeDownloadsCount > 0) {
-                                        Badge(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary
-                                        ) {
-                                            Text(
-                                                text = activeDownloadsCount.toString(),
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
+                    navDestinations.forEach { destination ->
+                        val selected = currentScreen == destination.route
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                if (!selected) {
+                                    haptics.tick()
+                                    if (destination.route == "settings") openSettings()
+                                    else currentScreenOverride = destination.route
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = if (currentScreen == "downloads") Lucide.CloudDownload else Lucide.CloudDownload,
-                                    contentDescription = "Загрузки"
-                                )
-                            }
-                        },
-                        label = if (compactBottomNavigation) null else {
-                            {
-                                Text(
-                                    "Загрузки",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        },
-                        alwaysShowLabel = !compactBottomNavigation,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.testTag("nav_item_downloads")
-                    )
-                    NavigationBarItem(
-                        selected = currentScreen == "settings",
-                        onClick = openSettings,
-                        icon = {
-                            Icon(
-                                imageVector = if (currentScreen == "settings") Lucide.Settings else Lucide.Settings,
-                                contentDescription = "Настройки"
-                            )
-                        },
-                        label = if (compactBottomNavigation) null else {
-                            {
-                                Text(
-                                    "Настройки",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        },
-                        alwaysShowLabel = !compactBottomNavigation,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.testTag("nav_item_settings")
-                    )
+                            },
+                            icon = {
+                                val icon = if (selected) destination.selectedIcon else destination.unselectedIcon
+                                if (destination.route == "downloads" && activeDownloadsCount > 0) {
+                                    BadgedBox(
+                                        badge = {
+                                            Badge(
+                                                containerColor = MaterialTheme.colorScheme.primary,
+                                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                            ) {
+                                                Text(
+                                                    text = activeDownloadsCount.toString(),
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        NavIcon(icon, destination.label, selected)
+                                    }
+                                } else {
+                                    NavIcon(icon, destination.label, selected)
+                                }
+                            },
+                            label = if (compactBottomNavigation) null else {
+                                {
+                                    Text(
+                                        destination.label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            },
+                            alwaysShowLabel = !compactBottomNavigation,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                            ),
+                            modifier = Modifier.testTag("nav_item_${destination.route}")
+                        )
+                    }
                 }
             }
         }
@@ -533,91 +438,46 @@ fun MainAppScreen(
                         .testTag("main_navigation_rail"),
                     containerColor = MaterialTheme.colorScheme.surface
                 ) {
-                    NavigationRailItem(
-                        selected = currentScreen == "home",
-                        onClick = { currentScreenOverride = "home" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentScreen == "home") Lucide.House else Lucide.House,
-                                contentDescription = "Главная"
-                            )
-                        },
-                        label = { Text("Главная") },
-                        alwaysShowLabel = true,
-                        colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.testTag("rail_item_home")
-                    )
-                    NavigationRailItem(
-                        selected = currentScreen == "explorer",
-                        onClick = { currentScreenOverride = "explorer" },
-                        icon = {
-                            Icon(
-                                imageVector = if (currentScreen == "explorer") Lucide.Folder else Lucide.Folder,
-                                contentDescription = "Проводник"
-                            )
-                        },
-                        label = { Text("Проводник") },
-                        alwaysShowLabel = true,
-                        colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.testTag("rail_item_explorer")
-                    )
-                    NavigationRailItem(
-                        selected = currentScreen == "downloads",
-                        onClick = { currentScreenOverride = "downloads" },
-                        icon = {
-                            BadgedBox(
-                                badge = {
-                                    if (activeDownloadsCount > 0) {
-                                        Badge(
-                                            containerColor = MaterialTheme.colorScheme.tertiary,
-                                            contentColor = MaterialTheme.colorScheme.onTertiary
-                                        ) {
-                                            Text(activeDownloadsCount.toString())
-                                        }
-                                    }
+                    navDestinations.forEach { destination ->
+                        val selected = currentScreen == destination.route
+                        NavigationRailItem(
+                            selected = selected,
+                            onClick = {
+                                if (!selected) {
+                                    haptics.tick()
+                                    if (destination.route == "settings") openSettings()
+                                    else currentScreenOverride = destination.route
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = if (currentScreen == "downloads") Lucide.CloudDownload else Lucide.CloudDownload,
-                                    contentDescription = "Загрузки"
-                                )
-                            }
-                        },
-                        label = { Text("Загрузки") },
-                        alwaysShowLabel = true,
-                        colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.testTag("rail_item_downloads")
-                    )
-                    NavigationRailItem(
-                        selected = currentScreen == "settings",
-                        onClick = openSettings,
-                        icon = {
-                            Icon(
-                                imageVector = if (currentScreen == "settings") Lucide.Settings else Lucide.Settings,
-                                contentDescription = "Настройки"
-                            )
-                        },
-                        label = { Text("Настройки") },
-                        alwaysShowLabel = true,
-                        colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.testTag("rail_item_settings")
-                    )
+                            },
+                            icon = {
+                                val icon = if (selected) destination.selectedIcon else destination.unselectedIcon
+                                if (destination.route == "downloads" && activeDownloadsCount > 0) {
+                                    BadgedBox(
+                                        badge = {
+                                            Badge(
+                                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                                contentColor = MaterialTheme.colorScheme.onTertiary
+                                            ) {
+                                                Text(activeDownloadsCount.toString())
+                                            }
+                                        }
+                                    ) {
+                                        NavIcon(icon, destination.label, selected)
+                                    }
+                                } else {
+                                    NavIcon(icon, destination.label, selected)
+                                }
+                            },
+                            label = { Text(destination.label) },
+                            alwaysShowLabel = true,
+                            colors = NavigationRailItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                            ),
+                            modifier = Modifier.testTag("rail_item_${destination.route}")
+                        )
+                    }
                 }
             }
 
@@ -695,4 +555,37 @@ fun MainAppScreen(
         }
     }
     }
+}
+
+/** Single source of truth for the app's tab destinations (bottom bar + rail). */
+private data class NavDestination(
+    val route: String,
+    val label: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector
+)
+
+private val navDestinations = listOf(
+    NavDestination("home", "Главная", Lucide.House, Lucide.House),
+    NavDestination("explorer", "Проводник", Lucide.FolderOpen, Lucide.Folder),
+    NavDestination("downloads", "Загрузки", Lucide.Download, Lucide.CloudDownload),
+    NavDestination("settings", "Настройки", Lucide.Settings2, Lucide.Settings)
+)
+
+/** Tab icon with a soft spring pop when its tab becomes active. */
+@Composable
+private fun NavIcon(icon: ImageVector, contentDescription: String, selected: Boolean) {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.12f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "nav_icon_scale"
+    )
+    Icon(
+        imageVector = icon,
+        contentDescription = contentDescription,
+        modifier = Modifier.scale(scale)
+    )
 }
