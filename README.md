@@ -1,210 +1,226 @@
-# 📦 CloudBox — Cloud Mail.ru Client & Downloader for Android
+# CloudBox
 
 <p align="center">
-  <img src="app/src/main/res/drawable/ic_launcher_foreground.xml" width="128" height="128" alt="CloudBox Logo" />
+  <img src="app/src/main/res/drawable/ic_launcher_foreground.xml" width="112" height="112" alt="CloudBox" />
 </p>
 
 <p align="center">
-  <strong>Современный Android-клиент для просмотра медиафайлов, навигации по папкам и быстрой загрузки контента с публичных ссылок Облака Mail.ru.</strong>
+  <strong>Нативный Android-клиент для публичных ссылок Облака Mail.ru и Яндекс.Диска:<br/>
+  просмотр медиа, навигация по папкам и фоновая загрузка файлов без браузера.</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android_8.0+_(API_26+)-3DDC84?style=flat&logo=android" alt="Android Platform" />
-  <img src="https://img.shields.io/badge/Language-Kotlin_2.2-7F52FF?style=flat&logo=kotlin" alt="Kotlin" />
-  <img src="https://img.shields.io/badge/UI-Jetpack_Compose_M3-4285F4?style=flat&logo=jetpackcompose" alt="Compose M3" />
-  <img src="https://img.shields.io/badge/Architecture-Clean_%2F_MVVM-blue?style=flat" alt="Architecture" />
-  <img src="https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=flat&logo=githubactions" alt="CI/CD" />
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat" alt="License" />
+  <a href="https://github.com/oustery/cloudbox-app/actions/workflows/ci.yml">
+    <img src="https://github.com/oustery/cloudbox-app/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <img src="https://img.shields.io/badge/platform-Android_7.0%2B_(API_24%2B)-3DDC84?logo=android&logoColor=white" alt="Platform" />
+  <img src="https://img.shields.io/badge/Kotlin-2.2-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin" />
+  <img src="https://img.shields.io/badge/Jetpack%20Compose-M3_Expressive-4285F4?logo=jetpackcompose&logoColor=white" alt="Compose" />
+  <img src="https://img.shields.io/badge/architecture-MVVM%20%2F%20Clean-blue" alt="Architecture" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
 </p>
 
 ---
 
-## 🚀 О проекте
+## О проекте
 
-**CloudBox** решает проблему неудобного просмотра и скачивания контента с общедоступных ссылок сервиса Облако Mail.ru (`https://cloud.mail.ru/public/...`). 
+CloudBox создан вокруг одной проблемы: веб-интерфейсы облачных сервисов неудобны для массового
+просмотра и скачивания контента по публичным ссылкам. Приложение работает с API сервисов
+напрямую — без регистрации и логина: пользователь вставляет публичную ссылку и получает нативную
+навигацию по вложенным папкам, галерею с превью, потоковый видеоплеер и полноценный менеджер
+загрузок с паузой и возобновлением.
 
-Вместо медленного веб-интерфейса в браузере с ограничениями, приложение обращается напрямую к сетевым диспетчерам сервиса, предоставляет нативную навигацию по вложенным папкам, встроенный зумируемый просмотрщик фото, потоковый видеоплеер и полноценный фоновый менеджер загрузок с отображением скорости в реальном времени.
+Ключевые свойства проекта:
 
----
+- **Мультипровайдерность** — единый интерфейс для Облака Mail.ru и Яндекс.Диска; провайдер
+  распознаётся из самой ссылки и маршрутизируется в соответствующий репозиторий.
+- **Оффлайн-дружелюбная библиотека** — посещённые ссылки сохраняются локально (Room) вместе
+  с категориями, избранным и счётчиками содержимого.
+- **Роуллинг-дистрибуция** — CI/CD собирает подписанные APK и публикует rolling-релиз,
+  приложение умеет обновляться прямо из себя.
 
-## ✨ Ключевые возможности
+## Возможности
 
-### 🔗 Умная работа с ссылками
-- Автоматическое распознавание любых вариаций публичных ссылок:
-  - `https://cloud.mail.ru/public/KVy7/S1hRRPVUE`
-  - `cloud.mail.ru/public/KVy7/S1hRRPVUE/subfolder`
-  - Короткие идентификаторы `KVy7/S1hRRPVUE`
-- Быстрая вставка из буфера обмена в один клик.
-- Поддержка системного меню **«Поделиться» (Share)**: открывайте ссылки прямо из Telegram, WhatsApp, браузера или заметок.
-- Автоматическое сохранение посещенных папок в локальную библиотеку (Room Database) с избранным, категориями и поиском.
+### Библиотека ссылок
 
-### 📁 Проводник файлов (Folder Explorer)
-- Навигация по подпапкам с интерактивной цепочкой «хлебных крошек» (Breadcrumbs).
-- Два режима отображения:
-  - **Адаптивная сетка (Grid)** с крупными карточками превью для фото и видео.
-  - **Детальный список (List)** с размерами, датами изменения и метаданными.
-- Мгновенный поиск файлов по имени и фильтрация по типам (Фото, Видео, Документы, Архивы).
-- Режим пакетного выбора (**Batch Selection**) с загрузкой всей папки или выбранных элементов в одно касание.
+- Вставка ссылки из буфера одним тапом, приём ссылок через системное меню «Поделиться».
+- Автоматическое сохранение открытых папок: название, категория, количество файлов, обложка.
+- Сводка на главной: сколько ссылок сохранено, сколько файлов в них лежит, сколько в избранном.
+- Фильтры с живыми счётчиками, поиск, сортировка (по дате, имени, объёму) — состояние
+  запоминается между сессиями.
+- Свайп-жесты: вправо — избранное, влево — удаление с отменой (undo-снекбар).
+- Объединённый пул «Все файлы»: содержимое всех сохранённых ссылок в одном списке
+  с указанием источника у каждого элемента.
 
-### 🖼️ Встроенная медиагалерея и плеер
-- **Полноэкранный просмотрщик фото**:
-  - Высокое разрешение превью (до 1024px и исходники).
-  - Поддержка жестов масштабирования **Pinch-to-Zoom** (до 5x), панорамирование (Pan) и двойной тап для быстрого зума.
-  - Кнопка мгновенного сброса масштаба.
-  - Листание соседних медиафайлов в текущей папке.
-- **Встроенный потоковый видеоплеер**:
-  - Прямое воспроизведение видеопотока через диспетчер серверов без необходимости предварительного скачивания.
-  - Управление воспроизведением, перемотка, таймкоды и автоповтор.
+### Проводник
 
-### ⚡ Менеджер загрузок
-- Фоновая загрузка с контролем потока и расчетом скорости (МБ/с, КБ/с).
-- Сохранение файлов напрямую в системную папку `Downloads/CloudBox` с немедленным появлением в галерее и файловом менеджере устройства.
-- Очередь загрузок: пауза, возобновление (HTTP Range), отмена и повтор при сбое связи.
-- Быстрое открытие скачанных файлов через системный `FileProvider`.
+- Навигация по подпапкам с хлебными крошками, адаптивная сетка или список.
+- Превью фото и видео с шиммер-загрузкой; режим «экономия трафика» отключает превью.
+- Мгновенный поиск по имени, фильтры по типам (медиа, фото, видео, аудио, документы, архивы),
+  сортировка — всё сохраняется как состояние рабочего пространства.
+- Мультивыбор с пакетной загрузкой: вся папка или только отмеченные элементы.
 
----
+### Просмотр медиа
 
-## 🔬 Архитектура и реверс-инжиниринг API
+- Фото: зум до 5x, панорамирование, двойной тап, листание соседних файлов папки.
+- Видео: Media3/ExoPlayer с потоковым воспроизведением без предварительной загрузки,
+  LRU-кэш 256 МБ для мгновенных повторных просмотров, докачка ±10 сек двойным тапом,
+  скорость 0.5–2x, пауза/цикл/мьют, продолжение с места остановки.
+- Аудио и документы открываются системными обработчиками.
+
+### Загрузки
+
+- Фоновый foreground-сервис с агрегированным уведомлением: прогресс, скорость, действия
+  «Пауза» и «Отмена» прямо из шторки.
+- Возобновление через HTTP Range, до 3 попыток на файл, параллелизм ограничен четырьмя задачами.
+- Файлы сохраняются в `Downloads/CloudBox` и сразу видны в галерее и файловом менеджере.
+
+### Настройки и обновления
+
+- Тема (системная/светлая/тёмная), динамические цвета Material You, стартовый экран,
+  виброотклик, экономия трафика, плотность сетки проводника.
+- Статистика кэша (превью в памяти/на диске, медиа-кэш плеера) и его очистка.
+- Встроенный обновлятор: проверка rolling-релиза, скачивание и установка APK в два тапа.
+
+## Поддерживаемые провайдеры
+
+| Провайдер | Распознаваемые ссылки | Механизм доступа |
+|---|---|---|
+| Облако Mail.ru | `cloud.mail.ru/public/<id1>/<id2>`, `cloud.mail.ru/public/…/подпапка`, короткий ключ `id1/id2` | Dispatcher API (weblink_get / weblink_view / thumbnails) + Folder API v2, HTML-фолбэк |
+| Яндекс.Диск | `disk.yandex.ru/d/<id>`, `disk.yandex.ru/i/<id>`, `yadi.sk/d/<id>`, публичные пути к файлам | Public API `cloud-api.yandex.net` (`public/resources`, `public/resources/download`), OAuth не требуется |
+
+Провайдер определяется автоматически при разборе ссылки ([`LinkProvider`](app/src/main/java/com/example/data/api/LinkProvider.kt));
+смешанная библиотека и общий пул поддерживаются «из коробки» — бейдж на карточке показывает источник.
+
+## Архитектура
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          Jetpack Compose M3 UI                              │
-│   ┌────────────────────┐ ┌────────────────────────┐ ┌────────────────────┐  │
-│   │     HomeScreen     │ │  FolderExplorerScreen  │ │ MediaViewerScreen  │  │
-│   └─────────┬──────────┘ └───────────┬────────────┘ └─────────┬──────────┘  │
-│             │                        │                        │             │
-│   ┌─────────▼────────────────────────▼────────────────────────▼──────────┐  │
-│   │                 DownloadsScreen & FileItemCard                       │  │
-│   └──────────────────────────────────┬───────────────────────────────────┘  │
-└──────────────────────────────────────┼──────────────────────────────────────┘
-                                       │
-┌──────────────────────────────────────▼──────────────────────────────────────┐
-│                            ViewModels Layer                                 │
-│   ┌────────────────────────────────────┐ ┌────────────────────────────────┐ │
-│   │         CloudLinkViewModel         │ │        DownloadViewModel       │ │
-│   └─────────────────┬──────────────────┘ └────────────────┬───────────────┘ │
-└─────────────────────┼─────────────────────────────────────┼─────────────────┘
-                      │                                     │
-┌─────────────────────▼─────────────────────────────────────▼─────────────────┐
-│                            Repository Layer                                 │
-│   ┌────────────────────────────────────┐ ┌────────────────────────────────┐ │
-│   │       CloudMailRuRepository        │ │       DownloadRepository       │ │
-│   └─────────────────┬──────────────────┘ └────────────────┬───────────────┘ │
-└─────────────────────┼─────────────────────────────────────┼─────────────────┘
-                      │                                     │
-        ┌─────────────┴─────────────┐         ┌─────────────┴─────────────┐
-        │                           │         │                           │
-┌───────▼──────────────┐   ┌────────▼───────┐ │ ┌───────────────────────┐ │
-│ CloudMailRuApi (V2)  │   │ Dispatcher     │ │ │ OkHttp Stream Engine  │ │
-│ - /api/v2/folder     │   │ & Shard Router │ │ │ Range-request / Media │ │
-└──────────────────────┘   └────────────────┘ │ └───────────────────────┘ │
-                                              │                           │
-┌─────────────────────────────────────────────┴───────────────────────────┴───┐
-│                    Room Database (Local Persistence)                        │
-│   - SavedLinkDao (избранные папки, категории, превью)                       │
-│   - DownloadDao (очередь, прогресс, статусы, пути к файлам)                 │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                          UI (Jetpack Compose, M3)                │
+│  HomeScreen   FolderExplorerScreen   MediaViewer   DownloadsScreen│
+│  SettingsScreen            + общие компоненты (cards, chips…)     │
+└──────────────────────────────┬───────────────────────────────────┘
+                               │  StateFlow / UiMessenger (снекбары)
+┌──────────────────────────────▼───────────────────────────────────┐
+│                          ViewModels                              │
+│  CloudLinkViewModel (библиотека, проводник, пул, плеер)           │
+│  DownloadViewModel (очередь загрузок)                             │
+│  AppSettingsViewModel (тема, поведение — DataStore)               │
+└──────────────┬────────────────────────────────┬──────────────────┘
+               │                                │
+┌──────────────▼──────────────┐  ┌──────────────▼─────────────────┐
+│        Repository layer     │  │      DownloadRepository        │
+│  CloudMailRuRepository ─────┼──┤  (foreground-сервис, Range,    │
+│   └─ provider routing:      │  │   ретраи, параллелизм ≤ 4)     │
+│      MAILRU → Mail.ru API   │  └──────────────┬─────────────────┘
+│      YANDEX → YandexDiskApi │                 │
+└──────┬──────────────┬───────┘                 │
+       │              │                         │
+┌──────▼──────┐ ┌─────▼───────────┐   ┌─────────▼──────────┐
+│ Mail.ru API │ │ Yandex Disk API │   │  Room (SavedLink,  │
+│ dispatcher/ │ │ cloud-api.      │   │  DownloadTask) +   │
+│ folder/v2/  │ │ yandex.net      │   │  DataStore (prefs) │
+│ thumbnails  │ │ public/resource │   └────────────────────┘
+└─────────────┘ └─────────────────┘
 ```
 
-### Протокол взаимодействия с Cloud Mail.ru
+- **`data/api`** — Retrofit-сервисы обоих провайдеров, разбор и нормализация ссылок
+  (`CloudUrlParser`, `LinkProvider`, `YandexUrlParser`).
+- **`data/repository`** — доступ к контенту: листинг папок, превью, прямые ссылки на файлы,
+  стриминг. Внешний код не знает, с каким облаком работает.
+- **`data/local`** — Room: сохранённые ссылки и задачи загрузок; **`data/preferences`** —
+  DataStore: тема, поведение, состояние проводника.
+- **`ui/core`** — общий скелет UX: снекбар-шина `UiMessenger`, тактильный отклик `Haptics`,
+  диалоги подтверждения.
 
-1. **Извлечение Weblink-ключа**:
-   Из ссылки `https://cloud.mail.ru/public/KVy7/S1hRRPVUE` выделяется ключ `KVy7/S1hRRPVUE`.
-2. **Маршрутизация серверов (`Dispatcher API`)**:
-   - Запрос: `GET https://cloud.mail.ru/api/v2/dispatcher`
-   - Разрешает актуальные пулы хостов:
-     - `weblink_get` → базовый адрес скачивания файлов (`https://clocloXX.cloud.mail.ru/weblink/get/`).
-     - `weblink_thumbnails` → генератор превью любого разрешения (`https://thumb.cloud.mail.ru/weblink/thumb/{size}/`).
-     - `weblink_view` → стриминг видео и аудио.
-3. **Листинг папки (`Folder API`)**:
-   - Запрос: `GET https://cloud.mail.ru/api/v2/folder?weblink={key}&offset=0&limit=1000&api=2`
-   - Возвращает JSON-дерево со списком файлов (`kind: "file"`), папок (`kind: "folder"`), размерами и типами контента.
-4. **Fallback-механизм**:
-   - При нестандартных ссылках или сбоях API активируется HTML-скрапер, извлекающий состояние объекта из мета-тегов и клиентских скриптов страницы.
+### Как это работает на примере Mail.ru
 
----
+1. Из ссылки выделяется weblink-ключ (`KVy7/S1hRRPVUE`).
+2. `GET /api/v2/dispatcher` возвращает актуальные пулы хостов для скачивания, стриминга
+   и генерации превью.
+3. `GET /api/v2/folder?weblink=…` отдаёт дерево папки с типами и размерами.
+4. Нестандартные ссылки обрабатываются HTML-фолбэком (мета-теги страницы).
 
-## 🛠️ Стек технологий
+Для Яндекс.Диска всё проще: `public/resources?public_key=…` возвращает и дерево, и превью,
+а `public/resources/download` — подписанную прямую ссылку на файл.
 
-| Компонент | Технология |
+## Структура проекта
+
+```
+app/src/main/java/com/example/
+├── MainActivity.kt            # навигация, тема, глобальные снекбары
+├── data/
+│   ├── api/                   # Retrofit, разбор ссылок, LinkProvider
+│   ├── local/                 # Room: entities, DAO
+│   ├── model/                 # CloudItem, сортировки
+│   ├── preferences/           # DataStore: AppSettings, UiPrefs
+│   ├── repository/            # Mail.ru + Yandex репозитории, загрузки
+│   └── update/                # AppUpdateManager (rolling-релиз)
+├── service/                   # DownloadService (foreground)
+└── ui/
+    ├── components/            # карточки, чипы, баннеры, скелетоны
+    ├── core/                  # feedback (снекбары, хаптика), диалоги
+    ├── icons/                 # кастомные иконки поверх Lucide
+    ├── screens/               # главная, проводник, плеер, загрузки, настройки
+    ├── theme/                 # дизайн-система CloudBox Rose, токены
+    └── viewmodel/             # CloudLink, Download
+```
+
+## Технологии
+
+| Слой | Технология |
 |---|---|
-| **Язык** | Kotlin 2.2 |
-| **UI Framework** | Jetpack Compose + Material Design 3 |
-| **Иконки** | Material Icons Extended (Adaptive Vector + Themed Icons) |
-| **Загрузка изображений** | Coil Compose 2.7 |
-| **Сетевой слой** | Retrofit 2.12 + OkHttp 4.10 + Moshi Kotlin Codegen |
-| **Локальная БД** | Room 2.7.0 (KSP, Flow, Coroutines) |
-| **Многопоточность** | Kotlin Coroutines (`StateFlow`, `SupervisorJob`, `Dispatchers.IO`) |
-| **Файлы & Шаринг** | AndroidX Core `FileProvider`, `MediaStore` |
-| **Тестирование** | JUnit 4, Robolectric 4.16, Compose UI Testing |
+| Язык | Kotlin 2.2, корутины, Flow |
+| UI | Jetpack Compose, Material 3 Expressive, Lucide-иконки, шрифт Inter |
+| Сеть | Retrofit 2.12, OkHttp 4.10, Moshi (codegen) |
+| БД и настройки | Room 2.7 (KSP), DataStore Preferences |
+| Медиа | Coil 2.7 (превью), Media3 ExoPlayer 1.8.1 (стриминг + SimpleCache) |
+| Фоновая работа | Foreground Service, DownloadManager (обновления APK) |
+| Тесты | JUnit 4, Robolectric, Compose UI тесты |
+| CI/CD | GitHub Actions: тесты + lint + сборка, rolling-релиз с подписью |
 
----
+## Сборка
 
-## 🏗️ Сборка и запуск проекта
-
-### Требования
-- Android Studio Ladybug / Meerkat или IntelliJ IDEA
-- JDK 17
-- Android SDK 36.1 (minimum supported Android version: API 24)
-
-### Сборка из командной строки
+Требования: JDK 17+, Android SDK 37 (используется Gradle wrapper 9.x).
 
 ```bash
-# Clone the repository
 git clone https://github.com/oustery/cloudbox-app.git
 cd cloudbox-app
 
-# Run unit and Robolectric tests
-./gradlew :app:testDebugUnitTest
-
-# Run Android lint
-./gradlew :app:lintDebug
-
-# Build the debug APK
-./gradlew :app:assembleDebug
-
-# Build split release APKs (requires signing configuration)
-./gradlew :app:assembleRelease -PsplitApks
+./gradlew :app:testDebugUnitTest   # юнит- и Robolectric-тесты
+./gradlew :app:lintDebug           # Android lint
+./gradlew :app:assembleDebug       # debug-APK
+./gradlew :app:assembleRelease -PsplitApks   # релизные APK (нужна подпись)
 ```
 
-Сгенерированные релизные файлы будут доступны в:
-```
-app/build/outputs/apk/release/
-├── app-arm64-v8a-release.apk     # Для 64-битных устройств
-├── app-armeabi-v7a-release.apk   # Для 32-битных устройств
-└── app-universal-release.apk     # Универсальный APK
-```
+Релизная сборка делит APK по ABI (`arm64-v8a`, `armeabi-v7a`, `universal`) и подписывается
+ключом из репозиторных секретов: `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS`,
+`KEY_PASSWORD`. Без секретов rolling-сборка подписывается эфемерным ключом (обновления
+«поверх» не работают), а версионируемые релизы намеренно падают — ключ не подменяется тихо.
 
----
+## CI/CD
 
-## CI/CD and releases (GitHub Actions)
+- **`ci.yml`** — на каждый PR и push в `main`: проверка wrapper, юнит-тесты, lint,
+  debug-сборка; артефакт живёт до конца прогона. Права — read-only.
+- **`release.yml`** — после зелёного CI в `main` публикует rolling-релиз `latest`
+  (три APK + SHA-256 контрольные суммы, стабильный пермалинк); тег `v*` запускает
+  версионируемый релиз.
 
-The repository owns two separate workflows:
-
-- `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. It validates the checked-in Gradle wrapper, runs unit/Robolectric tests and Android lint, builds a debug APK, and uploads that APK as a short-lived Actions artifact. It has read-only repository permissions.
-- `.github/workflows/release.yml` publishes a rolling `latest` prerelease only after a successful CI push to `main`. A `v*` tag starts a separate release run that validates wrapper, tests, lint, and debug build before packaging. Both paths build arm64-v8a, armeabi-v7a, and universal release APKs and verify SHA-256 checksums.
-
-A successful `main` build updates the rolling `latest` prerelease. To make a versioned release, push a semantic version tag after merging the release-ready commit:
+Версионированный релиз:
 
 ```bash
 git tag v1.2.3
 git push origin v1.2.3
 ```
 
-Versioned releases require all four repository Actions secrets: `KEYSTORE_BASE64`, `STORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD`. Encode the keystore as a single-line value (Linux: `base64 -w0 release.jks`) and keep a secure backup. Never commit signing keys or passwords. The Gradle release configuration uses the supplied alias and version metadata.
+Подробнее о разработке и выпуске — в [CONTRIBUTING.md](CONTRIBUTING.md).
 
-If no signing secrets exist, the rolling `latest` preview build uses an ephemeral key so delivery remains available. APKs signed by that temporary key are not suitable for in-place updates; configure a persistent signing key before broad distribution. Versioned releases intentionally fail instead of silently using a rotating key.
+## Документация
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for developer setup and release instructions.
+- [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — дизайн-система: палитра, типографика, токены.
+- [docs/UX_IMPROVEMENT_PLAN.md](docs/UX_IMPROVEMENT_PLAN.md) — UX-аудит и дорожная карта.
+- [plan.md](plan.md) — архитектурный бэклог.
 
----
+## Лицензия
 
-## 📋 План развития
-
-Ознакомьтесь с подробным планом улучшений и архитектурным бэклогом в документе [plan.md](plan.md).
-
----
-
-## 📄 Лицензия
-
-Распространяется под лицензией MIT. Подробности в файле `LICENSE`.
+Распространяется под лицензией MIT.
